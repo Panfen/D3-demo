@@ -128,7 +128,6 @@
 			.append('circle')
 			.attr('cx', (d) => xScale(d.label))
 			.attr('cy', (d) => yScale(d.value))
-			.attr('r', 4)
 			.attr('transform', `translate(${xScale.bandwidth() / 2}, 0)`)
 			.attr('fill', '#fff')
 			.attr('stroke', 'rgba(56, 8, 228, .5)')
@@ -136,10 +135,12 @@
 		// 路径描边动画
 		svg
 			.selectAll('path.path0')
-			.style('stroke-dasharray', function() { // 虚线长度
+			// 指定短划线和缺口的长度， 如果是奇数个值，会复制一次变成偶数：stroke-dasharray: '5' ==> stroke-dasharray: '5, 5'
+			.style('stroke-dasharray', function() { 
 				return d3.select(this).node().getTotalLength() // 指示路径总长度
 			})
-			.style('stroke-dashoffset', function() { // 虚线偏移量，正值向左偏移
+			// dash路径偏移量，正值向左偏移
+			.style('stroke-dashoffset', function() { 
 				return d3.select(this).node().getTotalLength() // 指示路径总长度
 			})
 			.transition()
