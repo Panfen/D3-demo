@@ -137,10 +137,10 @@
 		svg
 			.selectAll('path.path0')
 			.style('stroke-dasharray', function() { // 虚线长度
-				return d3.select(this).node().getTotalLength()
+				return d3.select(this).node().getTotalLength() // 指示路径总长度
 			})
-			.style('stroke-dashoffset', function() { // 虚线偏移量
-				return d3.select(this).node().getTotalLength()
+			.style('stroke-dashoffset', function() { // 虚线偏移量，正值向左偏移
+				return d3.select(this).node().getTotalLength() // 指示路径总长度
 			})
 			.transition()
 			.duration(2000)
