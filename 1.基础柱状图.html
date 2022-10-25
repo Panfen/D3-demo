@@ -13,30 +13,30 @@
 		
 		var bColor = ['#4385F4', '#34A853', '#FBBC05', '#E94335', '#01ACC2', '#AAACC2']
 		var dataArr = [
-		  {
-		    label: '1月',
-		    value: 10.5
-		  },
-		  {
-		    label: '2月',
-		    value: 70.5
-		  },
-		  {
-		    label: '3月',
-		    value: 60.5
-		  },
-		  {
-		    label: '4月',
-		    value: 10.5
-		  },
-		  {
-		    label: '5月',
-		    value: 20.5
-		  },
-		  {
-		    label: '6月',
-		    value: 30.5
-		  }
+			{
+				label: '1月',
+				value: 10.5
+			},
+			{
+				label: '2月',
+				value: 70.5
+			},
+			{
+				label: '3月',
+				value: 60.5
+			},
+			{
+				label: '4月',
+				value: 10.5
+			},
+			{
+				label: '5月',
+				value: 20.5
+			},
+			{
+				label: '6月',
+				value: 30.5
+			}
 		]
 
 		var svg = d3
@@ -88,10 +88,10 @@
 		d3
 			.selectAll('.chart text')
 			.style('fill', '#fff')
-    d3
+		d3
 			.selectAll('.chart line')
 			.style('stroke', '#fff')
-    d3
+		d3
 			.selectAll('.chart path')
 			.style('stroke', '#fff')
 
@@ -128,18 +128,18 @@
 			.style('background-color', '#fff')
 			.style('display', 'flex')
 			.style('justify-content', 'center')
-      .style('padding', '10px')
-      .style('border-radius', '5px')
-      .style('opacity', 0)
+			.style('padding', '10px')
+			.style('border-radius', '5px')
+			.style('opacity', 0)
 		// 对每个柱状添加交互
 		barG
 			.on('mouseenter', (e, d) => {
 				tooltips
 					.html(`月份：${d.label}<br /> 数据：${d.value}%`)
 					.style('position', 'absolute')
-          .style('left', `${e.clientX}px`)
-          .style('top', `${e.clientY}px`)
-          .style('opacity', 1)
+					.style('left', `${e.clientX}px`)
+					.style('top', `${e.clientY}px`)
+					.style('opacity', 1)
 			})
 			.on('mouseleave', (e, d) => {
 				tooltips
@@ -148,8 +148,6 @@
 					.style('left', `0px`)
 					.style('top', `0px`)
 			})
-
-
 		
 	</script>
 </body>
