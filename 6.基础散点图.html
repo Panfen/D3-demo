@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>6.基础散点图</title>
+	<script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+	<div class="chart"></div>
+
+	<script type="text/javascript">
+		
+		var bColor = ['#4385F4', '#34A853', '#FBBC05', '#E94335', '#01ACC2', '#AAACC2']
+		var dataArr = [
+			{
+				x: 70.5,
+				y: 0.5
+			},
+			{
+				x: 30.5,
+				y: 30.5
+			},
+			{
+				x: 50.5,
+				y: 20.5
+			},
+			{
+				x: 60.5,
+				y: 10.5
+			},
+			{
+				x: 20.5,
+				y: 70.5
+			},
+			{
+				x: 70.5,
+				y: 70.5
+			},
+			{
+				x: 60.5,
+				y: 90.5
+			},
+			{
+				x: 70.5,
+				y: 10.5
+			},
+			{
+				x: 10.5,
+				y: 30.5
+			},
+			{
+				x: 30.5,
+				y: 20.5
+			}
+		]
+
+		var width = 460
+		var height = 450
+		var margin = 20
+
+		// 创建画布
+		var svg = d3
+			.select('.chart')
+			.append('svg')
+			.attr('width', width)
+			.attr('height', height)
+			.style('background-color', '#1a3055')
+		// 组
+		var chart = svg
+			.append('g')
+			.attr('transform', `translate(${margin * 2}, ${margin})`)
+
+
+		// 创建比例尺
+		var xScale = d3
+			.scaleLinear()
+			.range([0, 400])
+			.domain([0, 100])
+
+		var yScale = d3
+			.scaleLinear()
+			.range([400, 0])
+			.domain([0, 100])
+
+		// 绘制坐标轴
+		const xAxis = d3.axisBottom(xScale).tickSize(-400)
+		chart
+			.append('g')
+			.attr('class', 'xAxis')
+			.attr('transform', `translate(0, 400)`)
+			.call(xAxis)
+		
+		const yAxis = d3.axisLeft(yScale).tickSize(-400).tickFormat(d => d + '%')
+		chart
+			.append('g')
+			.attr('transform', 'translate(0, 0)')
+			.call(yAxis)
+
+		d3.selectAll('.chart text').style('fill', '#fff')
+		d3.selectAll('.chart line').style('stroke', '#fff')
+		d3.selectAll('.chart path').style('stroke', '#fff')
+
+		// 绘制散点
+		chart
+			.append('g') // 创建绘制组，所有的点都绘制在组内
+			.selectAll()
+			.data(dataArr)
+			.enter()
+			.append('circle')
+			.attr('class', 'point')
+			.attr('cx', (d) => xScale(d.x))
+			.attr('cy', (d) => xScale(d.y))
+			.attr('r', 0)
+			.style('fill', '#FBBC05')
+			.style('stroke', 'rgba(56, 8, 228, .5)')
+			.transition()
+			.duration(300)
+			.attr('r', 8)
+
+		// 添加交互
+		var tooltips = d3
+			.select('body')
+			.append('div')
+			.style('width', '130px')
+			.style('height', '20px')
+			.style('background-color', '#fff')
+			.style('dispaly', 'flex')
+			.style('justify-content', 'center')
+			.style('padding', '10px')
+			.style('border-radius', '5px')
+			.style('opacity', 0)
+
+		d3.selectAll('.point')
+			.on('mouseenter', (e, g) => {
+				tooltips
+					.html(`X: ${g.x}, Y: ${g.y}`)
+					.style('position', 'absolute')
+					.style('left', `${e.clientX}px`)
+					.style('top', `${e.clientY}px`)
+					.style('opacity', 1)
+			})
+			.on('mouseleave', (e, g) => {
+				tooltips
+					.style('opacity', 0)
+					.style('left', '0px')
+					.style('top', '0px')
+			})
+
+	</script>
+</body>
+</html>
