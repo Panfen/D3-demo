@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>8.基础饼图</title>
+	<script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+	<div class="chart"></div>
+
+	<script type="text/javascript">
+		
+		var dataArr = [
+			{
+				label: '1月',
+				value: 10.5
+			},
+			{
+				label: '2月',
+				value: 70.5
+			},
+			{
+				label: '3月',
+				value: 60.5
+			},
+			{
+				label: '4月',
+				value: 10.5
+			},
+			{
+				label: '5月',
+				value: 20.5
+			},
+			{
+				label: '6月',
+				value: 30.5
+			}
+		]
+
+		var width = 700
+		var height = 700
+		var margin = 60
+
+		/**
+		 * 添加画布
+		 */ 
+		var svg = d3
+			.select('.chart')
+			.append('svg')
+			.attr('width', width)
+			.attr('height', height)
+			.style('background-color', '#1a3055')
+
+		var chart = svg.append('g').attr('transform', `translate(${margin}, ${margin})`)
+
+
+		/**
+		 * 创建比例尺
+		 * 一个简单的饼图只需要颜色比例尺，计算每个扇形的颜色
+		 */ 
+		const colorScale = d3.scaleOrdinal().domain(d3.range(0, dataArr.length)).range(d3.schemeCategory10)
+
+		/**
+		 * 绘制扇形
+		 */ 
+		var radius = (Math.min(width, height) * 0.5) / 2
+
+		let drawData = d3
+			.pie() // 弧形生成器，把数据转换为饼图数据
+			.value((d) => d.value)
+			.startAngle(0)
+			.endAngle(Math.PI * 2)
+
+		let arc = d3
+			.arc()
+			.innerRadius(0)
+			.outerRadius(100)
+
+		// 创建绘制组，居中绘制
+		const arcs = chart
+			.append('g')
+			.attr('transform', `translate(${radius * 2 - margin}, ${radius * 2 - margin})`)
+
+		const arcsEnter = arcs
+			.selectAll()
+			.data(drawData(dataArr))
+			.enter()
+
+		arcsEnter
+			.append('path')
+			.attr('class', 'pieArc')
+			.attr('stroke', 'steelblue')
+			.attr('stroke-width', 1)
+			.attr('fill', (d) => colorScale(d.index))
+			.attr('d', (d, i) => arc(d))
+			.transition()
+			.duration(1000)
+			.attrTween('d', function(d) {
+				// 初始加载时的过渡效果
+				let interpolate = d3.interpolate({ endAngle: d.startAngle }, d)
+				return function(t) {
+					return arc(interpolate(t))
+				}
+			})
+
+		/**
+		 * 绘制标签
+		 */ 
+		const arc2 = d3
+			.arc()
+			.innerRadius(0)
+			.outerRadius(100 * 3.5)
+
+		/** 
+		 * 计算文本水平偏移
+		 */ 
+		const textOffsetM = 10
+		const scaleTextDx = d3
+			.scaleLinear()
+			.domain([0, Math.PI / 2])
+			.range([textOffsetM, textOffsetM * 3])
+
+		function computeTextDx(d) {
+			const middleAngle = (d.startAngle + d.endAngle) / 2
+			let dx = ''
+			if (middleAngle < Math.PI) {
+				dx = scaleTextDx(Math.abs(middleAngle - Math.PI / 2))
+			} else {
+				dx = -scaleTextDx(Math.abs(middleAngle - (Math.PI * 3) / 2))
+			}
+			return dx
+		}
+
+		arcsEnter
+			.append('text')
+			.attr('text-anchor', (d) => (d.startAngle + d.endAngle) / 2 > Math.PI ? 'end' : 'start')
+			.attr('stroke', 'steelblue')
+			.attr('dy', '0.35em')
+			.attr('dx', computeTextDx)
+			.attr('transform', (d) => `translate(${arc2.centroid(d)})`) // 获取扇形的中心点
+			.text((d) => d.data.label + ':' + d.data.value)
+
+
+		/**
+		 * 绘制连线
+		 */ 
+
+		const linePoints = drawData(dataArr).map((d) => {
+			const line = []
+			const tempPoint = arc2.centroid(d)
+			const tempDx = computeTextDx(d)
+			const dx = tempDx > 0 ? tempDx - textOffsetM : tempDx + textOffsetM
+			line.push(arc.centroid(d))
+			line.push(tempPoint)
+			line.push([tempPoint[0] + dx, tempPoint[1]])
+			return line
+		})
+
+		const generateLine = d3
+			.line()
+			.x((d) => d[0])
+			.y((d) => d[1])
+
+		arcs
+			.selectAll()
+			.data(linePoints)
+			.enter()
+			.insert('path', ':first-child')
+			.classed('line', true)
+			.attr('fill', 'none')
+			.attr('stroke', 'steelblue')
+			.attr('d', generateLine)
+
+		/**
+		 * 添加交互：弧形动画
+		 */ 
+		function arcTween(outerRadius) {
+			return function() {
+				d3.select(this)
+					.transition()
+					.attrTween('d', (d) => {
+						const interpolate = d3.interpolate(100, 100 + outerRadius)
+						return function (t) {
+							const arcT = d3
+								.arc()
+								.innerRadius(0)
+								.outerRadius(interpolate(t))
+							return arcT(d)
+						}
+					})
+			}
+		}
+
+		d3.selectAll('.pieArc')
+			.on('mouseover', arcTween(20))
+			.on('mouseout', arcTween(0))
+
+		
+	</script>
+</body>
+</html>
