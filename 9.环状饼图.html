@@ -1,13 +1,9 @@
-<!-- 
-	饼图绘制要点：从12点方向开始，顺时针绘制扇形，角度变化：0 - 2π
- -->
-
 <!DOCTYPE html>
 <html>
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>8.基础饼图</title>
+	<title>9.环状饼图</title>
 	<script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 <body>
@@ -68,18 +64,20 @@
 		/**
 		 * 绘制扇形
 		 */ 
-		var radius = (Math.min(width, height) * 0.5) / 2
+		var radius = height / 4
 
 		let drawData = d3
 			.pie() // 弧形生成器，把数据转换为饼图数据
 			.value((d) => d.value)
+			.padAngle(0.02) // 扇形间隔
 			.startAngle(0)
-			.endAngle(Math.PI * 2)
+			.endAngle(Math.PI * 2)(dataArr)
 
 		let arc = d3
 			.arc()
-			.innerRadius(0)
-			.outerRadius(100)
+			.innerRadius(50)
+			.outerRadius(radius)
+			.cornerRadius(5) // 拐角圆滑
 
 		// 创建绘制组，居中绘制
 		const arcs = chart
@@ -88,7 +86,7 @@
 
 		const arcsEnter = arcs
 			.selectAll()
-			.data(drawData(dataArr))
+			.data(drawData)
 			.enter()
 
 		arcsEnter
@@ -109,16 +107,31 @@
 			})
 
 		/**
+		 * 绘制文本数据
+		 */ 
+		// 获取总和，计算扇形占比
+		let sum = d3.sum(dataArr, (d) => d.value)
+
+		arcsEnter
+			.append('text')
+			.attr('transform', (d) => `translate(${arc.centroid(d)})`)
+			.attr('text-anchor', 'middle') // 文字开始点在文字中间
+			.attr('fill', '#fff')
+			.attr('dominant-baseline', 'central') // 文字垂直居中
+			.attr('font-size', '10px')
+			.text((d) => ((d.data.value / sum) * 100).toFixed(2) + '%')
+
+
+		/**
 		 * 绘制标签
+		 * 和基础饼图一样，创建一个大几倍的扇形生成器，取其中心绘制标签
 		 */ 
 		const arc2 = d3
 			.arc()
 			.innerRadius(0)
-			.outerRadius(100 * 3.5)
+			.outerRadius(radius * 2.5)
 
-		/** 
-		 * 计算文本水平偏移
-		 */ 
+		// 计算文本偏移量，设置文本偏移
 		const textOffsetM = 10
 		const scaleTextDx = d3
 			.scaleLinear()
@@ -131,25 +144,27 @@
 			if (middleAngle < Math.PI) {
 				dx = scaleTextDx(Math.abs(middleAngle - Math.PI / 2))
 			} else {
-				dx = -scaleTextDx(Math.abs(middleAngle - (Math.PI * 3) / 2))
+				dx = -scaleTextDx(Math.abs(middleAngle - Math.PI * 3 / 2))
 			}
 			return dx
 		}
 
 		arcsEnter
 			.append('text')
+			.attr('class', (d) => `text${d.index}`)
 			.attr('text-anchor', (d) => (d.startAngle + d.endAngle) / 2 > Math.PI ? 'end' : 'start')
 			.attr('stroke', '#fff')
 			.attr('dy', '0.35em')
 			.attr('dx', computeTextDx)
-			.attr('transform', (d) => `translate(${arc2.centroid(d)})`) // 获取扇形的中心点
+			.attr('transform', (d) => `translate(${arc2.centroid(d)})`)
 			.text((d) => d.data.label + ':' + d.data.value)
 
 
 		/**
-		 * 绘制连线
-		 */
-		const linePoints = drawData(dataArr).map((d) => {
+		 * 绘制标签连线
+		 */ 
+		// 生成连线的点
+		const linePoints = drawData.map((d) => {
 			const line = []
 			const tempPoint = arc2.centroid(d)
 			const tempDx = computeTextDx(d)
@@ -169,36 +184,43 @@
 			.selectAll()
 			.data(linePoints)
 			.enter()
-			.insert('path', ':first-child') // 在最前绘制连线，达到扇形内的部分连线被遮盖的效果
+			.insert('path', ':first-child')
 			.classed('line', true)
 			.attr('fill', 'none')
 			.attr('stroke', '#fff')
 			.attr('d', generateLine)
 
 		/**
-		 * 添加交互：弧形动画
+		 * 添加交互
 		 */ 
+
 		function arcTween(outerRadius) {
 			return function() {
 				d3.select(this)
 					.transition()
-					.attrTween('d', (d) => {
-						const interpolate = d3.interpolate(100, 100 + outerRadius)
-						return function (t) {
-							const arcT = d3
-								.arc()
-								.innerRadius(0)
-								.outerRadius(interpolate(t))
-							return arcT(d)
+					.attrTween('d', function(d) {
+						if (outerRadius > 0) {
+							d3.select(`.text${d.index}`).attr('stroke', '#AAACC2')
+						} else {
+							d3.select(`.text${d.index}`).attr('stroke', '#fff')
 						}
+
+						let interpolate = d3.interpolate(radius, radius + outerRadius)
+						return function (t) {
+							let arcT = d3
+								.arc()
+								.innerRadius(50)
+								.outerRadius(interpolate(t))
+								.cornerRadius(5)
+							return arcT(d)
+						} 
 					})
 			}
 		}
-
-		d3.selectAll('.pieArc')
+		d3
+			.selectAll('.pieArc')
 			.on('mouseover', arcTween(20))
 			.on('mouseout', arcTween(0))
-
 		
 	</script>
 </body>
