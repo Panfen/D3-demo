@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>10.南丁格尔饼图</title>
+	<script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+	<div class="chart"></div>
+
+	<script type="text/javascript">
+		
+		var dataArr = [
+			{
+				label: '1月',
+				value: 10.5
+			},
+			{
+				label: '2月',
+				value: 70.5
+			},
+			{
+				label: '3月',
+				value: 60.5
+			},
+			{
+				label: '4月',
+				value: 10.5
+			},
+			{
+				label: '5月',
+				value: 20.5
+			},
+			{
+				label: '6月',
+				value: 30.5
+			}
+		]
+
+		var width = 700
+		var height = 700
+		var margin = 60
+
+		/**
+		 * 添加画布
+		 */ 
+		var svg = d3
+			.select('.chart')
+			.append('svg')
+			.attr('width', width)
+			.attr('height', height)
+			.style('background-color', '#1a3055')
+
+		var chart = svg.append('g').attr('transform', `translate(${margin}, ${margin})`)
+
+
+		/**
+		 * 创建比例尺
+		 */ 
+		// 颜色序数比例尺
+		const colorScale = d3.scaleOrdinal().domain(d3.range(0, dataArr.length)).range(d3.schemeCategory10)
+
+		// 根据数值获取扇形半径
+		const scaleRadius = d3
+			.scaleLinear()
+			.domain([0, d3.max(dataArr.map((d) => d.value))])
+			.range([0, d3.min([width - 4 * margin, height - 4 * margin]) * 0.5])
+
+
+		/**
+		 * 绘制扇形
+		 */
+		const drawData = d3
+			.pie()
+			.value((d) => d.value)
+			.startAngle(0)
+			.endAngle(Math.PI * 2)(dataArr)
+
+		// 创建饼图生成器，得到每个扇形的图形数据
+		const arcs = chart
+			.append('g')
+			.attr('class', 'pie')
+			.attr('transform', `translate(${(width - 2 * margin) / 2}, ${(height - 2 * margin) / 2})`)
+			.attr('stroke-width', 1)
+
+		// 扇形
+		arcs
+			.selectAll()
+			.data(drawData)
+			.enter()
+			.append('path')
+			.attr('class', (d, i) => `arc arc-${i}`)
+			.attr('fill', (d, i) => colorScale(i))
+			.transition()
+			.duration(1000)
+			.attrTween('d', arcTween)
+
+		function arcTween(d) {
+			// 半径插值
+			const interpolate = d3.interpolate(0, scaleRadius(d.value))
+			// 弧度插值
+			const fn = d3.interpolate({ endAngle: d.startAngle }, d)
+			return function(t) {
+				const arc = d3
+					.arc()
+					.innerRadius(0)
+					.outerRadius(interpolate(t))
+				return arc(fn(t))
+			}
+		}
+
+		// 其他同基础饼图
+		
+		
+	</script>
+</body>
+</html>
