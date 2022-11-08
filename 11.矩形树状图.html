@@ -3,7 +3,7 @@
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>10.南丁格尔饼图</title>
+	<title>11.矩形树状图</title>
 	<script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 <body>
@@ -11,36 +11,64 @@
 
 	<script type="text/javascript">
 		
-		var dataArr = [
-			{
-				label: '1月',
-				value: 10.5
-			},
-			{
-				label: '2月',
-				value: 70.5
-			},
-			{
-				label: '3月',
-				value: 60.5
-			},
-			{
-				label: '4月',
-				value: 10.5
-			},
-			{
-				label: '5月',
-				value: 20.5
-			},
-			{
-				label: '6月',
-				value: 30.5
-			}
-		]
+		const dataTree = {
+			name: '太刀',
+			children: [
+				{
+					name: '矿石',
+					children: [
+						{
+							name: '结晶框',
+							children: [
+								{ name: '蓝矿', num: 10 },
+								{ name: '超能水晶黑铁矿', num: 3 },
+								{ name: '白灰矿', num: 4 }
+							]
+						}
+					]
+				},
+				{
+					name: '木材',
+					children: [
+						{
+							name: '稀木',
+							children: [
+								{ name: '钴木', num: 4 },
+								{ name: '黑木', num: 2 }
+							]
+						},
+						{
+							name: '水木',
+							children: [{ name: '蓝木', num: 4 }]
+						}
+					]
+				},
+				{
+					name: '宝石',
+					children: [
+						{
+							name: '太阳类',
+							children: [
+								{ name: '日金石', num: 6 },
+								{ name: '熔岩石', num: 1 }
+							]
+						},
+						{
+							name: '深海类',
+							children: [
+								{ name: '寒铁石', num: 2 },
+								{ name: '金晶石', num: 3 },
+								{ name: '超级玄冰结晶', num: 2 }
+							]
+						}
+					]
+				}
+			]
+		}
 
-		var width = 700
-		var height = 700
-		var margin = 60
+		var width = 500
+		var height = 500
+		var margin = 30
 
 		/**
 		 * 添加画布
@@ -54,63 +82,69 @@
 
 		var chart = svg.append('g').attr('transform', `translate(${margin}, ${margin})`)
 
-
 		/**
-		 * 创建比例尺
+		 * 创建格式装换器
 		 */ 
-		// 颜色序数比例尺
-		const colorScale = d3.scaleOrdinal().domain(d3.range(0, dataArr.length)).range(d3.schemeCategory10)
 
-		// 根据数值获取扇形半径
-		const scaleRadius = d3
-			.scaleLinear()
-			.domain([0, d3.max(dataArr.map((d) => d.value))])
-			.range([0, d3.min([width - 4 * margin, height - 4 * margin]) * 0.5])
+		// 生成层次结构数据 - 并为各个节点制定 层次结构数据
+		const rootTree = d3
+			.hierarchy(dataTree)
+			.sum((d) => d.num) // 计算绘图属性value值，求和 其子节点所有num属性的和
+			.sort((a, b) => a.value - b.value) // 根据计算的value属性排序
+
+		const TreeMap = d3
+			.treemap() // 计算每个节点矩形数据x0、y0\x1、y1
+			.size([width - 2 * margin, height - 2 * margin])
+			.round(true) // 四舍五入
+			.padding(1)(rootTree) // 设置矩形布局之间间隔
+
+		const colorScale = d3.scaleOrdinal(d3.schemeSet3) // 创建和返回具有制定范围和域的序数标度
 
 
 		/**
-		 * 绘制扇形
-		 */
-		const drawData = d3
-			.pie()
-			.value((d) => d.value)
-			.startAngle(0)
-			.endAngle(Math.PI * 2)(dataArr)
+		 * 绘制矩形
+		 */ 
+		const rectChart = chart.append('g')
 
-		// 创建饼图生成器，得到每个扇形的图形数据
-		const arcs = chart
-			.append('g')
-			.attr('class', 'pie')
-			.attr('transform', `translate(${(width - 2 * margin) / 2}, ${(height - 2 * margin) / 2})`)
-			.attr('stroke-width', 1)
-
-		// 扇形
-		arcs
+		const nodeEnter = rectChart
 			.selectAll()
-			.data(drawData)
+			.data(rootTree.leaves()) // 矩形树状图只展示叶子节点
 			.enter()
-			.append('path')
-			.attr('class', (d, i) => `arc arc-${i}`)
+
+		nodeEnter
+			.append('rect')
+			.attr('class', 'cell')
+			.attr('x', (d) => d.x0)
+			.attr('y', (d) => d.y0)
+			.attr('width', (d) => d.x1 - d.x0)
+			.attr('height', (d) => d.y1 - d.y0)
 			.attr('fill', (d, i) => colorScale(i))
-			.transition()
-			.duration(1000)
-			.attrTween('d', arcTween)
 
-		function arcTween(d) {
-			// 半径插值
-			const interpolate = d3.interpolate(0, scaleRadius(d.value))
-			// 弧度插值
-			const fn = d3.interpolate({ endAngle: d.startAngle }, d)
-			return function(t) {
-				const arc = d3
-					.arc()
-					.innerRadius(0)
-					.outerRadius(interpolate(t))
-				return arc(fn(t))
-			}
+		/**
+		 * 绘制文案
+		 */
+		nodeEnter
+			.append('text')
+			.attr('class', 'cellText')
+			.attr('transform', (d) => `translate(${(d.x0 + d.x1) / 2}, ${(d.y0 + d.y1) / 2 + 6})`)
+			.attr('fill', '#666')
+			.attr('text-anchor', 'middle')
+			.text((d) => d.data.name) // 先渲染一遍，获取文字的长度，然后再做处理
+			.text(function(d) {
+				if (textWidthIsOk(d, this)) {
+					return d.data.name
+				} else {
+					return '...'
+				}
+			})
+
+		// 检测文本长度是否合适
+		function textWidthIsOk(d, text) {
+			console.log(text)
+			const textWidth = text.getBBox().width // 返回元素的边界框描述
+			console.log(textWidth)
+			return d.x1 - d.x0 >= textWidth
 		}
-
-		// 其他同基础饼图
 		
 		
 	</script>
