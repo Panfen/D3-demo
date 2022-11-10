@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>12.雷达图</title>
+	<script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+	<div class="chart"></div>
+
+	<script type="text/javascript">
+		
+		const dataArr = [
+			{
+				label: '1月',
+				value: [15.5, 10]
+			},
+			{
+				label: '2月',
+				value: [10.5, 60]
+			},
+			{
+				label: '3月',
+				value: [40.5, 100]
+			},
+			{
+				label: '4月',
+				value: [50.5, 40]
+			},
+			{
+				label: '5月',
+				value: [20.5, 10]
+			},
+			{
+				label: '6月',
+				value: [90.5, 20]
+			},
+		]
+
+		var width = 450
+		var height = 450
+		var margin = 20
+
+		/**
+		 * 添加画布
+		 */ 
+		var svg = d3
+			.select('.chart')
+			.append('svg')
+			.attr('width', width)
+			.attr('height', height)
+			.style('background-color', '#1a3055')
+
+		var chart = svg.append('g').attr('transform', `translate(${margin}, ${margin})`)
+
+		/**
+		 * 绘制雷达图层级
+		 * vertexNum: 顶点数
+		 * radius: 圆半径
+		 * tickNum: 层级数
+		 */ 
+		function getPolygonPoints(vertexNum, radius, tickNum) {
+			const points = [] // 点数组
+
+			const anglePiece = (Math.PI * 2) / vertexNum // 计算顶点间的弧度
+			const radiusReduce = radius / tickNum // 每个层级高度
+
+			for (let r = radius; r > 0; r -= radiusReduce) {
+				const polygon = []
+				// 获取每个层顶点位置
+				for (let i = 0; i < vertexNum; i++) {
+					polygon.push(Math.sin(i * anglePiece) * r + ',' + Math.cos(i * anglePiece) * r)
+				}
+				points.push(polygon.join(' '))
+			}
+			return points
+		}
+
+		const points = getPolygonPoints(dataArr.length, 100, 5)
+
+		const axes = chart
+			.append('g')
+			.attr('class', 'axes')
+			.attr('transform', `translate(${(width - margin * 2) / 2}, ${(height - margin * 2) / 2})`)
+
+		axes
+			.selectAll()
+			.data(points)
+			.enter()
+			.append('polygon')
+			.attr('class', 'axis')
+			.attr('points', (d) => d)
+			.attr('fill', (d, i) => (i % 2 === 0 ? 'white' : '#ddd'))
+			.attr('stroke', 'gray')
+
+		// 得到顶层 多边形 顶点
+		const ponitsTop = points[0].split(' ').map((d) => d.split(','))
+		const line = d3.line()
+		axes
+			.selectAll()
+			.data(ponitsTop)
+			.enter()
+			.append('path')
+			.attr('class', 'line')
+			.attr('d', (d) => line([ [0, 0], [d[0], d[1]] ]))
+			.attr('stroke', 'gray')
+
+		/**
+		 * 绘制文本
+		 */ 
+		function computeTextAnchor(num, i) {
+			const angle = (360 / num) * i
+			if (angle === 0 || Math.abs(angle - 180) < 0.01) {
+				return 'middle'
+			} else if (angle > 180) {
+				return 'end'
+			} else {
+				return 'start'
+			}
+		}
+
+		axes
+			.selectAll()
+			.data(dataArr)
+			.enter()
+			.append('text')
+			.attr('fill', '#fff')
+			.attr('x', (d, i) => Math.sin(Math.PI * 2 / dataArr.length * i) * 120)
+			.attr('y', (d, i) => Math.cos(Math.PI * 2 / dataArr.length * i) * 120)
+			.attr('text-anchor', (d, i) => computeTextAnchor(dataArr.length, i))
+			.attr('dy', 6.5) // 文字居中对齐
+			.text((d) => d.label)
+
+		/**
+		 * 绘制数据
+		 */ 
+
+		// 转换数据格式，按照value维度分成2组
+		let newData = []
+		dataArr[0].value.forEach((item, j) => {
+		 	const row = []
+		 	dataArr.forEach((item, i) => {
+		 		row.push(item.value[j])
+		 	})
+		 	newData.push(row)
+		})
+
+		// 创建颜色获取对象
+		const colorScale = d3.scaleOrdinal(d3.schemeSet2)
+
+		// 计算多边形的顶点并生成顶点圆圈
+		function generatePolygons(d, index) {
+			const points = []
+			const anglePiece = (Math.PI * 2) / d.length
+			d.forEach((item, i) => {
+				const x = Math.sin(i * anglePiece) * item
+				const y = Math.cos(i * anglePiece) * item
+
+				// 添加交点圆圈
+				axes
+					.append('circle')
+					.attr('fill', '#fff')
+					.attr('stroke', colorScale(index))
+					.attr('cx', 0)
+					.attr('cy', 0)
+					.attr('r', 3)
+					.transition()
+					.duration(1000)
+					.attr('cx', x)
+					.attr('cy', y)
+
+				points.push(x + ',' + y)
+			})
+
+			return points.join(' ')
+		}
+
+		axes
+			.selectAll()
+			.data(newData)
+			.enter()
+			.append('polygon')
+			.attr('class', 'polygon')
+			.attr('fill', 'none')
+			.attr('stroke', (d, i) => colorScale(i))
+			.attr('stroke-width', 2)
+			.attr('points', (d, i) => {
+				const miniPolygon = []
+				d.forEach(() => {
+					miniPolygon.push('0,0')
+				})
+				return miniPolygon.join(' ')
+			})
+			.transition()
+			.duration(1000)
+			.attr('points', generatePolygons)
+
+		/**
+		 * 添加交互
+		 */ 
+		d3.selectAll('.polygon')
+			.on('mouseover', (e) => d3.select(e.target).attr('stroke-width', 5))
+			.on('mouseleave', (e) => d3.select(e.target).attr('stroke-width', 2))
+
+	</script>
+</body>
+</html>
