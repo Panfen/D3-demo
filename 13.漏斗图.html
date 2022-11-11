@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>13.漏斗图</title>
+	<script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+	<div class="chart"></div>
+
+	<script type="text/javascript">
+		
+		var dataArr = [
+			{
+				label: '1月',
+				value: 10.5
+			},
+			{
+				label: '2月',
+				value: 70.5
+			},
+			{
+				label: '3月',
+				value: 60.5
+			},
+			{
+				label: '4月',
+				value: 10.5
+			},
+			{
+				label: '5月',
+				value: 20.5
+			},
+			{
+				label: '6月',
+				value: 30.5
+			}
+		]
+
+		var width = 450
+		var height = 450
+		var margin = 20
+
+		/**
+		 * 添加画布
+		 */ 
+		var svg = d3
+			.select('.chart')
+			.append('svg')
+			.attr('width', width)
+			.attr('height', height)
+			.style('background-color', '#1a3055')
+
+		var chart = svg.append('g').attr('transform', `translate(${margin * 2}, ${margin * 4})`)
+
+		/**
+		 * 创建比例尺
+		 */ 
+		var widthScale = d3
+			.scaleLinear()
+			.domain([0, d3.max(dataArr, (d) => d.value)]) // 以数据的最大值创建宽度比例尺
+			.range([0, width * 0.5])
+
+		var colorScale = d3.scaleOrdinal(d3.schemeSet3)
+
+		// 对数据排序，值大的排在前面；为每个数据对象，添加下一个数据的值，用于梯形坐标计算
+		var handleData = dataArr
+			.sort((a, b) => b.value - a.value)
+			.map((d, i, array) => {
+				// 获取下一个数据的值，最后一个值设置为0
+				d.nextValue = i !== array.length - 1 ? array[i + 1].value : 0
+				d.index = i
+				return d
+			})
+
+		/**
+		 * 绘制梯形
+		 */
+		// 创建梯形绘制组，水平移动到画布中间开会绘制
+		var funneleChart = chart.append('g').attr('transform', `translate(${(width - margin * 4) / 2}, 0)`)
+
+		// 通过比例尺计算每个梯形顶点的坐标
+		function getPoints(topWidth, bottomWidth, height) {
+			const points = []
+			points.push(-topWidth / 2 + ',' + 0)
+			points.push(topWidth / 2 + ',' + 0)
+
+			if (bottomWidth === 0) {
+				// 最后一个点，形成三角形
+				points.push(0 + ',' + height)
+			} else {
+				points.push(bottomWidth / 2 + ',' + height)
+				points.push(-bottomWidth / 2 + ',' + height)
+			}
+			return points.join(' ')
+		}
+
+		// 梯形高度
+		var funnelHeight = 40
+		funneleChart
+			.selectAll()
+			.data(handleData)
+			.enter()
+			.append('polygon')
+			.attr('class', (d, i) => `trap trap-${i}`)
+			.attr('points', (d) => getPoints(widthScale(d.value), widthScale(d.nextValue), funnelHeight))
+			.attr('transform', (d, i) => `translate(0, ${i * (funnelHeight + 5)})`) // 5表示梯形间的间隔
+			.attr('fill', (d) => colorScale(d.label))
+
+		/**
+		 * 绘制文本
+		 */ 
+		funneleChart
+			.selectAll()
+			.data(handleData)
+			.enter()
+			.append('text')
+			.attr('class', (d, i) => `label label-${i}`)
+			.style('font-size', 12)
+			.text((d) => d.label)
+			.attr('text-anchor', 'middle')
+			.attr('x', 0)
+			.attr('y', function(d, i) {
+				return i * (funnelHeight + 5) + funnelHeight / 2 + this.getBBox().height / 4
+			})
+			.attr('stroke', '#000')
+
+		/**
+		 * 添加交互
+		 */ 
+		d3.selectAll('.trap')
+			.on('mouseover', function(e, d) {
+				d3.select(e.target).attr('fill', '#fff')
+			})
+			.on('mouseleave', function(e, d) {
+				d3.select(e.target).attr('fill', colorScale(d.label))
+			})
+		d3.selectAll('.label')
+			.on('mouseover', function(e, d) {
+				console.log(d)
+				d3.select(`.trap-${d.index}`).attr('fill', '#fff')
+			})
+			.on('mouseleave', function(e, d) {
+				d3.select(`.trap-${d.index}`).attr('fill', colorScale(d.label))
+			})
+
+	</script>
+</body>
+</html>
