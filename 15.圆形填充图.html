@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>15.圆形填充图</title>
+	<script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+	<div class="chart"></div>
+
+	<script type="text/javascript">
+		
+		const dataTree = {
+			name: '太刀',
+			children: [
+				{
+					name: '矿石',
+					children: [
+						{
+							name: '结晶框',
+							children: [
+								{ name: '蓝矿', num: 10 },
+								{ name: '黑铁矿', num: 3 },
+								{ name: '白灰矿', num: 4 }
+							]
+						}
+					]
+				},
+				{
+					name: '木材',
+					children: [
+						{
+							name: '稀木',
+							children: [
+								{ name: '钴木', num: 4 },
+								{ name: '黑木', num: 2 }
+							]
+						},
+						{
+							name: '水木',
+							children: [{ name: '蓝木', num: 4 }]
+						}
+					]
+				},
+				{
+					name: '宝石',
+					children: [
+						{
+							name: '太阳类',
+							children: [
+								{ name: '日金石', num: 6 },
+								{ name: '熔岩石', num: 1 }
+							]
+						},
+						{
+							name: '深海类',
+							children: [
+								{ name: '寒铁石', num: 2 },
+								{ name: '金晶石', num: 3 },
+								{ name: '玄冰结晶', num: 2 }
+							]
+						}
+					]
+				}
+			]
+		}
+
+		var width = 450
+		var height = 450
+		var margin = 30
+
+		/**
+		 * 添加画布
+		 */ 
+		var svg = d3
+			.select('.chart')
+			.append('svg')
+			.attr('width', width)
+			.attr('height', height)
+			.style('background-color', '#1a3055')
+
+		var chart = svg.append('g').attr('transform', `translate(${margin * 2}, ${margin * 2})`)
+
+		/**
+		 * 比例尺 
+		 */
+		const colorScale = d3.scaleOrdinal(d3.schemeSet3)
+
+		const rootTree = d3
+			.hierarchy(dataTree)
+			.sum((d) => d.num)
+			.sort((a, b) => a.value - b.value) // 倒序排列
+
+		// 使用pack()创建圆形布局信息，并为数据添加位置信息
+		const pack = d3.pack().size([width - margin * 4, height - margin * 4])(rootTree)
+
+		/**
+		 * 绘制圆形
+		 */ 
+		const rectChart = chart.append('g')
+
+		// 对每一个节点创建单独返回的绘制组
+		const rectChartG = rectChart
+			.selectAll()
+			.data(pack.descendants()) // 返回后代接节点数组
+			.enter()
+			.append('g')
+			.attr('class', (d, i) => `g g-${i}`)
+
+		// 绘制圆
+		rectChartG
+			.append('circle')
+			.attr('class', 'circle')
+			.attr('cx', (d) => d.x)
+			.attr('cy', (d) => d.y)
+			.attr('r', (d) => d.r)
+			.attr('fill', (d, i) => colorScale(d.data.name))
+
+		// 绘制文本
+		rectChartG
+			.append('text')
+			.attr('class', 'text')
+			.attr('transform', (d) => `translate(${d.x}, ${d.y})`)
+			.text((d) => d.data.name)
+			.attr('fill', '#000')
+			.attr('text-anchor', 'middle')
+			.attr('dy', function() {
+				return this.getBBox().height / 4
+			})
+			.text(function(d) {
+				if (d.children) return
+				return textWidthIsOk(d, this) ? d.data.name : '...'
+			})
+
+		// 检查文本长度是否合适
+		function textWidthIsOk(d, text) {
+			const textWidth = text.getBBox().width
+			return d.r * 2 >= textWidth
+		}
+
+		/**
+		 * 添加交互
+		 */ 
+		var tooltip = d3
+			.select('body')
+			.append('div')
+			.style('width', 'auto')
+			.style('height', '40px')
+			.style('background-color', '#fff')
+			.style('dispaly', 'flex')
+			.style('justify-content', 'center')
+			.style('padding', '10px')
+			.style('border-radius', '5px')
+			.style('opacity', 0)
+
+		d3.selectAll('.g > .circle')
+			.on('mouseover', (e, d) => {
+				tooltip
+					.html(`材质：${d.data.name}<br /> 数量：${d.value}`)
+					.style('position', 'absolute')
+					.style('left', `${e.clientX}px`)
+					.style('top', `${e.clientY}px`)
+					.style('opacity', 1)
+				d3.select(e.target).attr('fill', '#fff')
+			})
+			.on('mouseleave', (e, d) => {
+				tooltip
+					.style('opacity', 0)
+					.style('left', '0px')
+					.style('top', '0px')
+				d3.select(e.target).attr('fill', colorScale(d.data.name))
+			})
+
+		// 鼠标移到文字上提示框会消失，所以要为text添加事件，然后通过e.target.previousSibling(获取前一个兄弟节点)改变样式
+
+		
+	</script>
+</body>
+</html>
