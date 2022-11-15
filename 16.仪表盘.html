@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>16.仪表盘</title>
+	<script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+	<div class="chart"></div>
+
+	<script type="text/javascript">
+		
+		const data = 95
+
+		var width = 450
+		var height = 450
+		var margin = 30
+
+		/**
+		 * 添加画布
+		 */ 
+		var svg = d3
+			.select('.chart')
+			.append('svg')
+			.attr('width', width)
+			.attr('height', height)
+			.style('background-color', '#1a3055')
+
+		var chart = svg.append('g')
+
+		/**
+		 * 比例尺和配置信息
+		 */
+		// 颜色比例尺
+		const colorScale = d3.scaleOrdinal(d3.schemeSet3)
+
+		// 仪表盘半径
+		const radius = d3.min([width - margin * 4, height - margin * 4]) / 2
+
+		// 设置分段值，计算出仪表盘的分段的弧度值
+		const nums = [0, 50, 90, 100]
+		const numLength = 100 // 仪表盘总长度
+		const angleLength = 280 // 仪表盘度数
+		let angleDraw = []
+		nums.forEach((item, i) => {
+			if (i !== nums.length - 1) {
+				const angleS = (item / numLength) * angleLength
+				const angleE = (nums[i + 1] / numLength) * angleLength
+				angleDraw.push({
+					startAngle: (angleS - angleLength / 2) * (Math.PI / 180),
+					endAngle: (angleE - angleLength / 2) * (Math.PI / 180)
+				})
+			}
+		})
+
+		let innerArc = 25 // 仪表盘 条形宽度
+
+		/**
+		 * 绘制仪表盘弧形
+		 */ 
+		const arc = d3
+			.arc()
+			.outerRadius(radius)
+			.innerRadius(radius - innerArc)
+
+		chart
+			.append('g')
+			.attr('transform', `translate(${width / 2}, ${height / 2})`)
+			.selectAll()
+			.data(angleDraw)
+			.enter()
+			.append('path')
+			.attr('class', (d, i) => `arc-${i}`)
+			.attr('d', arc)
+			.attr('fill', (d, i) => colorScale(i))
+
+		const kedu = []
+		for (let i = -angleLength / 2; i <= angleLength / 2; i += angleLength / 100) {
+			kedu.push(i * (Math.PI / 180))
+		}
+
+		const ticks = chart
+			.append('g')
+			.attr('transform', `translate(${width / 2}, ${height / 2})`)
+			.selectAll()
+			.data(kedu)
+			.enter()
+			.append('g')
+			.attr('class', 'ticks')
+			.each(drawTicks)
+			.each(drawLabels)
+
+		function drawTicks(d, i) {
+			if (i === 0 || i === 100) return
+			const innerRadius = i % 10 === 0 ? radius - innerArc : radius - innerArc / 3
+			d3.select(this)
+				.append('line')
+				.attr('stroke', '#000')
+				.attr('x1', Math.sin(d) * radius)
+				.attr('y1', -Math.cos(d) * radius)
+				.attr('x2', Math.sin(d) * innerRadius)
+				.attr('y2', -Math.cos(d) * innerRadius)
+		}
+
+		function drawLabels(d, i) {
+			let textAnchor = 'end'
+			if (i === 50) {
+				textAnchor = 'middle'
+			}
+			if (i % 10 === 0) {
+				const textRadius = radius - innerArc - 15
+				d3.select(this)
+					.append('text')
+					.attr('class', 'label')
+					.attr('x', Math.sin(d) * textRadius)
+					.attr('y', -Math.cos(d) * textRadius)
+					.attr('dy', 5.5)
+					.attr('stroke', '#fff')
+					.attr('text-anchor', d < -0.01 ? 'start' : textAnchor)
+					.text((i / 100) * 100)
+			}
+		}
+
+		/**
+		 * 绘制指针
+		 */
+		function points() {
+			// 顶点
+			const upper = Math.floor(radius - innerArc - 50)
+			// 两边 中间点
+			const short = Math.floor(upper * 0.13)
+			// 两边点
+			const both = Math.floor(short * 0.6)
+			return [`0, ${short}`, `${both}, 0`, `0, ${-upper}`, `${-both}, 0`]
+		}
+
+		const ponter = chart
+			.append('g')
+			.attr('transform', `translate(${width / 2}, ${height / 2})`)
+			.selectAll()
+			.data([data])
+			.enter()
+			.append('polygon')
+			.attr('class', 'ponter')
+			.attr('points', points)
+			.attr('fill', colorScale(0))
+			.attr('transform', `rotate(${-0.5 * angleLength})`)
+
+		ponter
+			.transition()
+			.duration(1000)
+			.attrTween('transform', rotateTween)
+			.attrTween('fill', fillTween)
+
+		function rotateTween(d) {
+			return function (t) {
+				return `rotate(${((d * t) / numLength - 0.5) * angleLength})`
+			}
+		}
+
+		function fillTween(d) {
+			return function(t) {
+				let i = 0
+				while(i < nums.length - 1 && nums[i] < d * t) {
+					i++
+				}
+				return colorScale(i - 1)
+			}
+		}
+		
+	</script>
+</body>
+</html>
