@@ -1,0 +1,170 @@
+<!-- d3-selection之我一定要弄清楚：https://github.com/Holybasil/Blog/issues/12 -->
+
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>17.桑基图</title>
+	<script src="https://d3js.org/d3.v7.min.js"></script>
+	<!-- 桑基图布局计算需要使用d3.sankey()函数。该函数不在d3整体包中，需要单独引入 -->
+	<script src="https://unpkg.com/d3-sankey@0"></script>
+</head>
+<body>
+	<div class="chart"></div>
+
+	<script type="text/javascript">
+		
+		const data = {
+			nodes: [
+				{ name: 'a' },
+				{ name: 'b' },
+				{ name: 'c' },
+				{ name: 'd' },
+				{ name: 'e' },
+				{ name: 'f' },
+				{ name: 'g' },
+				{ name: 'h' },
+				{ name: 'i' }
+			],
+			links: [
+				{ source: 'a', target: 'd', value: 10 },
+				{ source: 'a', target: 'i', value: 2 },
+				{ source: 'b', target: 'd', value: 8 },
+				{ source: 'b', target: 'e', value: 6 },
+				{ source: 'c', target: 'e', value: 5 },
+				{ source: 'b', target: 'e', value: 2 },
+				{ source: 'b', target: 'i', value: 4 },
+				{ source: 'd', target: 'f', value: 3 },
+				{ source: 'd', target: 'g', value: 4 },
+				{ source: 'd', target: 'h', value: 5 },
+				{ source: 'e', target: 'g', value: 7 },
+				{ source: 'e', target: 'f', value: 3 },
+				{ source: 'e', target: 'h', value: 5 }
+			]
+		}
+
+		var width = 450
+		var height = 450
+		var margin = 30
+
+		/**
+		 * 添加画布
+		 */ 
+		var svg = d3
+			.select('.chart')
+			.append('svg')
+			.attr('width', width)
+			.attr('height', height)
+			.style('background-color', '#1a3055')
+
+		var chart = svg.append('g').attr('transform', `translate(${margin}, ${margin})`)
+
+		/**
+		 * 比例尺和配置信息
+		 */
+		// 颜色比例尺
+		const colorScale = d3.scaleOrdinal(d3.schemeSet3)
+
+		// 桑基图生成器
+		const sankey = d3
+			.sankey()
+			.nodeWidth(30)
+			.nodePadding(20)
+			.size([width - margin * 2, height - margin * 2])
+			.nodeId((d) => d.name)
+
+		// 使用生成器，获取节点/连线的位置信息
+		const { nodes, links } = sankey({
+			nodes: data.nodes,
+			links: data.links,
+		})
+
+		/**
+		 * 绘制桑基图
+		 */ 
+		chart
+			.append('g')
+			.selectAll()
+			.data(nodes)
+			.join('g')
+			.attr('class', 'node')
+			.attr('indexName', (d) => d.name)
+			.append('rect')
+			.attr('fill', (d, i) => colorScale(d.name))
+			.attr('x', (d) => d.x0)
+			.attr('y', (d) => d.y0)
+			.attr('width', (d) => d.x1 - d.x0)
+			.attr('height', (d) => d.y1 - d.y0)
+			.append('title')
+			.text((d) => d.name)
+
+		chart
+			.selectAll('.node')
+			.append('text')
+			.attr('class', 'text')
+			.attr('x', (d) => (d.x0 + d.x1) / 2)
+			.attr('y', (d) => (d.y0 + d.y1) / 2)
+			.attr('text-anchor', 'middle')
+			.attr('stroke', '#333')
+			.attr('dy', 6)
+			.text((d) => d.name)
+
+		chart
+			.append('g')
+			.selectAll()
+			.data(links)
+			.join('path')
+			.attr('indexName', (d) => `${d.source.name}-${d.target.name}`)
+			.attr('d', d3.sankeyLinkHorizontal()) // 根据连线数据生成路径坐标点
+			.attr('stroke', (d, i) => colorScale(d.source.name))
+			.attr('stroke-width', (d) => d.width)
+			.attr('stroke-opacity', 0.5)
+			.append('title')
+			.text((d) => d.value)
+
+		/**
+		 * 添加交互
+		 */ 
+		d3.selectAll('.node')
+			.on('mouseover', (e, d) => {
+				d3.selectAll('.node, path')
+					.attr('fill-opacity', 0.1)
+					.attr('stroke-opacity', 0.1)
+
+				d3.selectAll(`[indexName*=${d.name}]`)  // *=包含关系
+					.attr('fill-opacity', 1)
+					.attr('stroke-opacity', 0.6)
+			})
+			.on('mouseleave', () => {
+				d3.selectAll('.node, path')
+					.attr('fill-opacity', 1)
+					.attr('stroke-opacity', 0.5)
+			})
+
+		d3.selectAll('path')
+			.on('mouseover', (e, d) => {
+				d3.selectAll('.node, path')
+					.attr('fill-opacity', 0.1)
+					.attr('stroke-opacity', 0.1)
+
+				const hoverNodes = d3.select(e.target)
+					.attr('stroke-opacity', 0.5)
+					.attr('indexName')
+					.split('-')
+
+				hoverNodes.forEach(name => {
+					d3.selectAll(`[indexName=${name}]`).attr('fill-opacity', 1)
+				})
+
+			})
+			.on('mouseleave', () => {
+				d3.selectAll('.node, path')
+					.attr('fill-opacity', 1)
+					.attr('stroke-opacity', 0.5)
+			})
+
+		
+	</script>
+</body>
+</html>
