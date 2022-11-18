@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>18.旭日图</title>
+	<script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+	<div class="chart"></div>
+
+	<script type="text/javascript">
+
+		const data = {
+			name: 'A',
+			children: [
+				{
+					name: 'a',
+					children: [
+						{
+							name: 'a-a',
+							children: [
+								{
+									name: 'a-aa',
+									value: 2
+								}
+							]
+						},
+						{
+							name: 'a-b',
+							value: 4
+						}
+					]
+				},
+				{
+					name: 'b',
+					children: [
+						{
+							name: 'b-a',
+							children: [
+								{
+									name: 'b-aa',
+									value: 2
+								}
+							]
+						}
+					]
+				},
+				{
+					name: 'c',
+					children: [
+						{
+							name: 'c-a',
+							children: [
+								{
+									name: 'c-aa',
+									value: 2
+								},
+								{
+									name: 'c-ab',
+									value: 5
+								},
+								{
+									name: 'c-ac',
+									children: [
+										{
+											name: 'c-aca',
+											value: 2
+										},
+										{
+											name: 'c-acb',
+											value: 5
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			]
+		}
+
+		var width = 450
+		var height = 450
+		var margin = 30
+
+		/**
+		 * 添加画布
+		 */ 
+		var svg = d3
+			.select('.chart')
+			.append('svg')
+			.attr('width', width)
+			.attr('height', height)
+			.style('background-color', '#1a3055')
+
+		var chart = svg.append('g')
+
+		/**
+		 * 比例尺和配置信息
+		 */
+		// 颜色比例尺
+		// d3.interpolateRainbow(t), t∈[0, 1], 返回一串RGB颜色
+		// d3.quantize(interpolator, n), 通过插值器函数(interpolator)，返回传入的样本数(n)
+		const color = d3.scaleOrdinal(d3.quantize(d3.interpolateRainbow, data.children.length + 1))
+
+		const root = d3
+			.hierarchy(data) // 构造根节点数据
+			.sum((d) => d.value)
+			.sort((a, b) => b.value - a.value)
+
+		// 分区图布局
+		const partition = (newData) => {
+			// d3.partition() 递归地将节点树  分区为旭日图或者冰柱图
+			// size() 设置布局为极坐标系，以弧度和层级进行布局
+			return d3.partition().size([Math.PI * 2, newData.height + 1])(newData)
+		}
+
+		/**
+		 * 绘制扇形
+		 */ 
+		const slices = chart.append('g').attr('transform', `translate(${width / 2}, ${height / 2})`)
+
+		// 处理交互时的唯一标识，图中间圆标识
+		let currentRoot = 'chart'
+
+		// 点击节点，修改数据重新绘制图形
+		function handle_node_click(e, d) {
+			if (d.data.name === currentRoot) {
+				// 点击中心节点回退
+				if (d.parent) {
+					const newD = d.parent.copy() // 复制当前节点信息
+					newD.parent = d.parent.parent // 手动添加父节点
+					draw(newD)
+				}
+			} else {
+				// 点击其余节点下钻
+				const newD = d.copy()
+				newD.parent = d.parent
+				draw(newD)
+			}
+		}
+
+		function draw(newData) {
+			const nodes = partition(newData) // 获取分区数据
+			nodes.each((d) => (d.current = d))
+			const radius = width / 2 / (nodes.height + 2)
+
+			// 中心节点
+			currentRoot = nodes.data.name
+
+			const path = slices
+				.selectAll('.node')
+				.data(nodes.descendants(), (d) => d.data.name)
+				.join(
+					(enter) => {
+						let $gs = enter.append('path')
+						$gs.append('title').text((d) => `${d.data.name}: ${d.value}`)
+						return $gs
+					},
+					(update) => update,
+					(exit) => {
+						exit
+							.transition()
+							.duration(100)
+							.attr('opacity', 0)
+							.remove()
+					}
+				)
+				.attr('class', 'node')
+				.style('cursor', 'pointer')
+				.attr('fill', (d) => {
+					while(d.depth > 1) d = d.parent
+					return color(d.data.name)
+				})
+				.on('click', handle_node_click)
+				.transition()
+				.duration(300)
+				.attrTween('d', arcTween)
+
+			function arcTween(item) {
+				/**
+				 * 弧度计算
+				 */ 
+				let currentArc = this._current
+				if (!currentArc) {
+					currentArc = { startAngle: 0, endAngle: 0 }
+				}
+				const interpolateArc = d3.interpolate(currentArc, {
+					startAngle: item.x0,
+					endAngle: item.x1
+				})
+				this._current = interpolateArc(1)
+
+				/**
+				 * 半径计算
+				 */ 
+				const innerRadiusR = item.y0 * radius
+				let currentRadius = this._currentR
+				if (!currentRadius) {
+					currentRadius = innerRadiusR
+				}
+				const outerRadiusR = d3.interpolate(currentRadius, item.y1 * radius - 1)
+				this._currentR = outerRadiusR(1)
+
+				return function(t) {
+					const arc = d3
+						.arc()
+						.padAngle(Math.min((item.x1 - item.x0) / 2, 0.005))
+						.innerRadius(innerRadiusR)
+						.outerRadius(outerRadiusR(t))
+					return arc(interpolateArc(t))
+				}
+			}
+
+			// 文本位置计算
+			function labelTransform(d) {
+				const x = (d.x0 + d.x1) / 2 * 180 / Math.PI
+				let y = (d.y0 + d.y1) / 2 * radius
+				if (d.y0 === 0) {
+					return `translate(0, 0)`
+				}
+				return `rotate(${x - 90}) translate(${y}, 0) rotate(${x < 180 ? 0 : 180})`
+			}
+
+			const label = slices
+				.selectAll('text')
+				.data(nodes.descendants(), (d) => d.data.name)
+				.join(
+					(enter) => {
+						let $gs = enter.append('text')
+						return $gs
+					},
+					(update) => update,
+					(exit) => {
+						// 多出的节点删除
+						exit
+							.transition()
+							.duration(100)
+							.attr('opacity', 0)
+							.remove()
+					}
+				)
+				.attr('text-anchor', 'middle')
+				.attr('pointer-events', 'none')
+				.style('user-select', 'none')
+				.attr('transform', (d) => labelTransform(d))
+				.text((d) => d.data.name)
+		}
+
+		draw(root)
+
+	</script>
+</body>
+</html>
