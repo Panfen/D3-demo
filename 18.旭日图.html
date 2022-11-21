@@ -244,6 +244,7 @@
 				.attr('text-anchor', 'middle')
 				.attr('pointer-events', 'none')
 				.style('user-select', 'none')
+				.attr('dy', '0.35em')
 				.attr('transform', (d) => labelTransform(d))
 				.text((d) => d.data.name)
 		}
