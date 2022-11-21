@@ -75,14 +75,16 @@
 
 		const force = d3
 			.forceSimulation() // 创建一个力模拟
-			.force('link', d3.forceLink()) // forc(name[, force]) 如果指定了力，则为指定的名称分配力并返回此模拟
-			.force('charge', d3.forceManyBody())
-			.force('center', d3.forceCenter(width / 2, height / 2))
+			.force('link', d3.forceLink()) // 连接的引力
+			.force('charge', d3.forceManyBody()) // 点之间的引力
+			.force('center', d3.forceCenter(width / 2, height / 2)) // 引力的中心
 
-		const forceNodes = force.nodes(nodes).on('tick', ticked)
+		// 加入节点数据，计算节点布局
+		force.nodes(nodes).on('tick', ticked) // tick计时器，用来监听绑定后数据的变化
 
+		// 加入边集数据，生成关联布局信息
 		force
-			.force('link') // 如果未值定力，则返回具有指定名称的力函数
+			.force('link') // 如果未指定力，则返回具有指定名称的力函数
 			.links(edges)
 			.distance((d) => d.value * 100)
 
@@ -96,17 +98,19 @@
 			.enter()
 			.append('g')
 
-		// 绘制线，因为力模拟会事实改变位置，所以没有指定位置，位置信息在ticked函数中确定
+		// 绘制连线，因为力模拟会事实改变位置，所以没有指定位置，位置信息在ticked函数中确定
 		const links = line
 			.append('line')
 			.attr('stroke', '#ccc')
 			.attr('stroke-width', 1)
 
+		// 绘制连线文本
 		const linksText = line
 			.append('text')
 			.text((d) => d.value)
 			.attr('fill', '#ccc')
 
+		// 绘制节点
 		const nodesChart = chart
 			.append('g')
 			.selectAll()
@@ -131,6 +135,7 @@
 			.attr('pointer-events', 'none')
 			.style('user-select', 'none')
 
+		// 动态设置图形的位置信息
 		function ticked() {
 			links
 				.attr('x1', (d) => d.source.x)
@@ -157,7 +162,9 @@
 		)
 
 		function started(e, d) {
-			force.alphaTarget(0.8).restart() // 设置衰减系数
+			force
+				.alphaTarget(0.8) // 对节点位置移动过程的模拟，数值越高移动越快，数值范围[0，1]
+				.restart() // 拖动过程会中断模拟器，利用restart重新启动
 			d.fx = d.x
 			d.fy = d.y
 		}
