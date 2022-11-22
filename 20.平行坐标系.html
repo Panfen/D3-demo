@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>20.平行坐标系</title>
+	<script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+	<div class="chart"></div>
+
+	<script type="text/javascript">
+
+		// 横坐标
+		const names = ['生命', '力量', '耐力', '速度', '魔力']
+
+		// 数据
+		const dataArr = [
+			{
+				name: '张三',
+				a1: '90',
+				a2: '80',
+				a3: '20',
+				a4: '20',
+				a5: '5'
+			},
+			{
+				name: '李四',
+				a1: '50',
+				a2: '5',
+				a3: '20',
+				a4: '10',
+				a5: '95'
+			},
+			{
+				name: '王五',
+				a1: '50',
+				a2: '60',
+				a3: '50',
+				a4: '60',
+				a5: '50'
+			}
+		]
+	
+		var width = 450
+		var height = 450
+		var margin = 30
+
+		/**
+		 * 添加画布
+		 */ 
+		var svg = d3
+			.select('.chart')
+			.append('svg')
+			.attr('width', width)
+			.attr('height', height)
+			.style('background-color', '#1a3055')
+
+		var chart = svg.append('g').attr('transform', `translate(${margin}, ${margin})`)
+
+		/**
+		 * 比例尺和配置信息
+		 */
+		// 颜色比例尺
+		const colorScale = d3.scaleOrdinal(d3.quantize(d3.interpolateRainbow, dataArr.length + 1))
+
+		// 线性比例尺
+		const scale = d3
+			.scaleLinear()
+			.domain([0, 100])
+			.range([height - margin * 3, 0])
+
+
+		/**
+		 * 绘制坐标轴和折线
+		 */ 
+		const axiss = chart
+			.append('g')
+			.selectAll()
+			.data(names)
+
+		axiss
+			.enter()
+			.append('g')
+			.attr('class', (d, i) => `axis axis-${i}`)
+			.attr('transform', (d, i) => `translate(${(i + 0.5) * (width - margin * 2) / 5}, 0)`)
+			.call(d3.axisLeft(scale).ticks(10))
+			.append('text')
+			.attr('dx', '0.5em')
+			.attr('transform', (d, i) => `translate(0, ${height - margin * 2})`)
+			.text((d) => d)
+
+		d3.selectAll('.chart text').style('fill', '#fff')
+		d3.selectAll('.chart line').style('stroke', '#fff')
+		d3.selectAll('.chart path').style('stroke', '#fff')
+
+		// 绘制折线
+		const lines = chart
+			.append('g')
+			.selectAll()
+			.data(dataArr)
+
+		const line = lines
+			.enter()
+			.append('g')
+			.attr('class', 'line')
+
+		line
+			.append('path')
+			.attr('class', (d) => `line line-${d.name}`)
+			.attr('stroke', (d) => colorScale(d.name))
+			.attr('stroke-width', 2)
+			.attr('fill', 'none')
+			.attr('d', (d) => d3.line()(generatePoints(d)))
+
+		// 生成折线点
+		function generatePoints(d) {
+			const arr = names.map((item, i) => {
+				return [(i + 0.5) * (width - margin * 2) / 5, scale(d[`a${i + 1}`])]
+			})
+			return arr
+		}
+
+		// 绘制文字
+		line
+			.append('text')
+			.attr('class', (d, i) => `lineText lineText-${i}`)
+			.attr('dx', '0.5em')
+			.attr('fill', (d) => colorScale(d.name))
+			.attr('transform', (d) => `translate(${(4 + 0.5) * (width - margin * 2) / 5}, ${scale(d['a5'])})`)
+			.text((d) => d.name)
+
+		/**
+		 * 添加交互
+		 */ 
+		d3.selectAll('.lineText')
+			.on('mouseover', (e, d) => {
+				console.log(d)
+				d3.select(`.line-${d.name}`).attr('stroke-width', 3)
+			})
+			.on('mouseleave', (e, d) => {
+				d3.select(`.line-${d.name}`).attr('stroke-width', 2)
+			})
+
+		
+	</script>
+</body>
+</html>
