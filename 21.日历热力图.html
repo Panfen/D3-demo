@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>21.日历热力图</title>
+	<script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+	<div class="chart"></div>
+
+	<script type="text/javascript">
+
+		// 数据
+		const dataArr = {
+			'2022-0-15': 3,
+			'2022-05-16': 2,
+			'2022-05-17': 1,
+			'2022-05-18': 3,
+			'2022-05-19': 6,
+			'2022-05-20': 5,
+			'2022-07-21': 1,
+			'2022-05-22': 2,
+			'2022-05-23': 1,
+			'2022-03-24': 3,
+			'2022-05-25': 2,
+			'2022-05-26': 5,
+			'2022-05-27': 4,
+			'2022-05-28': 6,
+			'2022-05-29': 2,
+			'2022-05-30': 1,
+			'2022-10-31': 3
+		}
+
+		var width = 1100
+		var height = 220
+		var margin = 40
+
+		/**
+		 * 添加画布
+		 */ 
+		var svg = d3
+			.select('.chart')
+			.append('svg')
+			.attr('width', width)
+			.attr('height', height)
+			.style('background-color', '#1a3055')
+
+		var chart = svg.append('g').attr('transform', `translate(${margin}, ${margin})`)
+
+		/**
+		 * 比例尺和配置信息
+		 */
+		// 颜色比例尺
+		const colorScale = d3
+			.scaleLinear()
+			.domain([0, d3.max(Object.values(dataArr))])
+			.range(['#FC9', '#F96'])
+
+		// 数据组装
+		function generateDataset(options = { fill: {} }) {
+			// 开始时间
+			const startDate = options.startDate ? new Date(options.startDate) : new Date('2022-01-01')
+			// 结束时间
+			const endDate = options.endDate ? new Date(options.endDate) : new Date()
+			// 间隔天数
+			const totalDays = Math.floor((endDate.getTime() - startDate.getTime()) / 86400000)
+
+			// 循环天数
+			let year, month
+			let yearIndex = -1, monthIndex = -1
+			let yearGroup = []
+			let dayTem = 0
+			while(dayTem <= totalDays) {
+				const dateName = d3.timeFormat('%Y-%m-%d')(new Date(startDate.getTime() + 86400000 * dayTem))
+				console.log(dateName)
+				const dateArr = dateName.split('-')
+				// 年
+				if (!year || year !== dateArr[0]) {
+					year = dateArr[0]
+					yearGroup.push({
+						name: dateArr[0],
+						monthGroup: []
+					})
+					yearIndex++
+					monthIndex = -1
+				}
+
+				// 月
+				if (!month || dateArr[1] !== month) {
+					month = dateArr[1]
+					yearGroup[yearIndex].monthGroup.push({
+						name: dateArr[0] + '-' + dateArr[1],
+						dayGroup: []
+					})
+					monthIndex++
+				}
+
+				// 获取热力数据值
+				let total = null
+				if (options.fill.hasOwnProperty(dateName)) {
+					total = options.fill[dateName]
+				}
+
+				// 天
+				yearGroup[yearIndex].monthGroup[monthIndex].dayGroup.push({
+					name: dateName,
+					month: dateArr[1],
+					dayTem: dayTem + startDate.getDay(),
+					total
+				})
+
+				dayTem++
+			}
+
+			return yearGroup
+		}
+
+		const dayDatas = generateDataset({ fill: dataArr })
+
+		
+		/**
+		 * 绘制日历块
+		 */ 
+		const yearSvg = chart
+			.selectAll()
+			.data(dayDatas)
+			.enter()
+			.append('g')
+			.attr('class', (d) => `year year-${d.name}`)
+
+		const monthSvg = yearSvg
+			.selectAll()
+			.data((d) => d.monthGroup)
+			.enter()
+			.append('g')
+			.attr('class', (d) => `month month-${d.name}`)
+
+		const daySvg = monthSvg
+			.selectAll()
+			.data((d) => d.dayGroup)
+			.enter()
+			.append('rect')
+			.attr('width', 20)
+			.attr('height', 20)
+			.attr('rx', 3)
+			.attr('fill', (d) => !d.total ? (d.month % 2 ? '#ddd' : '#fff') : colorScale(d.total))
+			.attr('x', (d) => Math.floor(d.dayTem / 7) * 21)
+			.attr('y', (d) => (d.dayTem % 7) * 21)
+
+		/**
+		 * 绘制月和周
+		 */ 
+		const title = chart.append('g')
+
+		const week = ['日', '一', '二', '三', '四', '五', '六']
+
+		title
+			.append('g')
+			.attr('class', 'week')
+			.selectAll('.label')
+			.data(week)
+			.enter()
+			.append('text')
+			.attr('class', 'label')
+			.attr('x', -25)
+			.attr('y', 20 / 2)
+			.attr('dy', (d, i) => i * 21 + 5)
+			.attr('fill', '#efefef')
+			.text((d) => d)
+
+		let monthArr = []
+		dayDatas.forEach((item) => {
+			monthArr = monthArr.concat(item.monthGroup)
+		})
+
+		title
+			.append('g')
+			.attr('class', 'month-title')
+			.selectAll()
+			.data(monthArr)
+			.enter()
+			.append('text')
+			.attr('x', (d, i) =>  i * 21 * 4.25 + 40)
+			.attr('y', -10)
+			.attr('fill', '#efefef')
+			.attr('font-size', '1em')
+			.attr('font-family', 'monospace')
+			.text((d) => d.name)
+
+		
+		
+	</script>
+</body>
+</html>
