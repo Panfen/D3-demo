@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>23.平移折线图</title>
+	<script src="https://d3js.org/d3.v7.min.js"></script>
+	<script src="./utils/index.js"></script>
+</head>
+<body>
+	<div class="chart"></div>
+
+	<script type="text/javascript">
+
+		// timeParse() 解析和格式化时间 -- %b月 %Y年
+		const parseDate = d3.timeParse('%b %Y')
+
+		function type(d) {
+		  d.date = parseDate(d.date)
+		  d.price = +d.price
+		  return d
+		}
+
+		// csvParse() 解析给定的CSV字符串，返回一个对象数组
+		const data = d3.csvParse(getMockCsvData(), type)
+
+
+		/**
+		 * 添加画布
+		 */
+
+		// 全局画布变量
+		const margin = { top: 50, right: 50, bottom: 125, left: 50 }
+		const margin2 = { top: 410, right: 50, bottom: 50, left: 50 }
+		const width = 960 - margin.left - margin.right
+		const height = 500 - margin.top - margin.bottom
+		const height2 = 500 - margin2.top - margin2.bottom
+
+		const svg = d3
+			.select('.chart')
+			.append('svg')
+			.attr('width', 960)
+			.attr('height', 500)
+
+
+		/**
+		 * 比例尺和配置信息
+		 */
+
+		// 比例尺
+		const x = d3.scaleTime().range([0, width])
+		const x2 = d3.scaleTime().range([0, width])
+		const y = d3.scaleLinear().range([height, 0])
+		const y2 = d3.scaleLinear().range([height2, 0])
+
+		// 坐标轴
+		const xAxis = d3.axisBottom(x)
+		const xAxis2 = d3.axisBottom(x2)
+		const yAxis = d3.axisLeft(y)
+
+		// 输入域
+		x.domain(d3.extent(data.map(d => d.date))) // d3.extent 返回最小值和最大值组成的数组
+		y.domain([0, d3.max(data.map(d => d.price))])
+		x2.domain(x.domain())
+		y2.domain(y.domain())
+
+		// 沿x轴创建画笔
+		const brush = d3
+			.brushX()
+			.extent([
+				[0, 0],
+				[width, height2]
+			])
+			.on('brush', brushed)
+
+		function brushed(brush) {
+
+		}
+
+		// 创建面积生成器
+		const area = d3
+			.area()
+			.x((d) => x(d.date))
+			.y0(height)
+			.y1((d) => y(d.price))
+
+		const area2 = d3
+			.area()
+			.x((d) => x2(d.date))
+			.y0(height2)
+			.y1((d) => y2(d.price))
+
+
+		/**
+		 * 绘制图表和画笔操作
+		 */
+
+		const chartSvg = svg
+			.append('g')
+			.attr('class', 'focus')
+			.attr('transform', `translate(${margin.left}, ${margin.top})`)
+
+		chartSvg
+			.append('g')
+			.attr('class', 'x axis')
+			.attr('transform', `translate(-1, ${height})`)
+
+
+	</script>
+</body>
+</html>

@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <style>
+    body {
+      font: 10px sans-serif;
+      font-weight: bold;
+    }
+
+    .axis path,
+    .axis line {
+      fill: none;
+      stroke: none;
+    }
+
+    .x.axis path {
+      display: none;
+    }
+
+    .line {
+      fill: none;
+      stroke: steelblue;
+      stroke-width: 1.5px;
+    }
+
+    #lineChart {
+      background: #0B2340;
+    }
+
+    .d3-tip {
+      cursor: pointer;
+      width: 175px;
+      height: 115px;
+      background: rgba(0, 24, 52, 0.7);
+      opacity: 1;
+      border-image: linear-gradient(180deg, rgba(25, 86, 126, 1), rgba(0, 38, 83, 1)) 1 1;
+      text-align: center;
+      border-radius: 5px 5px 0px 0px;
+    }
+  
+  </style>
+</head>
+
+<body>
+  <script src="https://d3js.org/d3.v5.min.js"></script>
+  <script src="./d3-tip.js"></script>
+
+  <svg id="lineChart"></svg>
+
+
+  <script>
+      let _svg = d3.select('svg');
+
+      const dataValue = [
+        {
+          x: 1,
+          y1: 4,
+          y: 23
+        }, {
+          x: 2,
+          y1: 3,
+          y: 6
+        }, {
+          x: 3,
+          y1: 4,
+          y: 4
+        }, {
+          x: 4,
+          y1: 8,
+          y: 7
+        }, {
+          x: 5,
+          y1: 4,
+          y: 4
+        }, {
+          x: 6,
+          y1: 7,
+          y: 2
+        }, {
+          x:7,
+          y1: 4,
+          y: 10
+        }, {
+          x: 8,
+          y1: 2,
+          y: 14
+        }, {
+          x: 9,
+          y1: 12,
+          y: 14
+        }, {
+          x: 10,
+          y1: 6,
+          y: 4
+        }, {
+          x: 11,
+          y1: 8,
+          y: 8
+        },
+        {
+          x: 12,
+          y1: 8,
+          y: 18
+        },
+      ]
+
+      var data1 = [
+        {
+          x: 1,
+          y: 2
+        }, {
+          x: 2,
+          y: 4
+        }, {
+          x: 3,
+          y: 3
+        }, {
+          x: 4,
+          y: 4
+        }, {
+          x: 5,
+          y: 8
+        }, {
+          x: 6,
+          y: 4
+        }, {
+          x: 7,
+          y: 7
+        }, {
+          x: 8,
+          y: 4
+        }, {
+          x: 9,
+          y: 2
+        }, {
+          x: 10,
+          y: 4
+        }, {
+          x: 11,
+          y: 6
+        }, {
+          x: 12,
+          y: 8
+        }
+      ]
+
+      var data = [
+        {
+          x: 1,
+          y: 1,
+        }, {
+          x: 2,
+          y: 3
+        }, {
+          x: 3,
+          y: 6
+        }, {
+          x: 4,
+          y: 4
+        }, {
+          x: 5,
+          y: 7
+        }, {
+          x: 6,
+          y: 4
+        }, {
+          x: 7,
+          y: 2
+        }, {
+          x: 8,
+          y: 10
+        }, {
+          x: 9,
+          y: 14
+        }, {
+          x: 10,
+          y: 14
+        }, {
+          x: 11,
+          y: 4
+        }, {
+          x: 12,
+          y: 8
+        }
+      ]
+
+      let total = [data, data1]
+      let totalArray = dataValue.map(item => item.y1 > item.y ? item.y1 : item.y)
+      var margin = {
+        top: 20,
+        right: 80,
+        bottom: 30,
+        left: 50
+      };
+
+      var w = 1200;
+      var h = 700;
+    
+      var scaleX = d3.scaleLinear()
+        .domain([
+          d3.min(dataValue.map(item => item.x)), 
+          d3.max(dataValue.map(item => item.x)),
+        ])
+        .range([0, w - margin.left - margin.right]);
+
+      var scaleY = d3.scaleLinear()
+        .domain([0, d3.max(totalArray)])
+        .range([h, 0])
+
+      var color = d3.scaleOrdinal(d3.schemeCategory10)
+
+      var xAxis = d3
+        .axisBottom()
+        .scale(scaleX)
+        .tickSize(0)
+
+      var yAxis = d3
+        .axisLeft()
+        .scale(scaleY)
+        .tickSize(0);
+
+      var line = d3
+        .line()
+        .x((d, index) => scaleX(index))
+        .y(d => scaleY(d.y))
+        .curve(d3.curveBasis);
+
+      _svg
+        .append('linearGradient')
+        .attr('id', 'liner')
+        .attr('gradientUnits', 'userSpaceOnUse')
+        .selectAll('stop')
+        .data(dataValue.map((item, index) => 1 / (dataValue.length - 1) * index))
+        .join('stop')
+        .attr('offset', d => d)
+        .attr('stop-color', (d, index) => dataValue[index].y <= dataValue[index].y1 ? 'green' : 'red');
+
+      var svg = _svg
+        .attr('width', w + margin.left + margin.right)
+        .attr('height', h + margin.top + margin.bottom)
+        .append('g')
+        .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')')
+
+      scaleX.domain([0, dataValue.length - 1]);
+      scaleY.domain([
+        d3.min([d3.min(data, d => d.y), d3.min(data1, d => d.y)]),
+        d3.max([d3.max(data, d => d.y), d3.max(data1, d => d.y)]),
+      ])
+      
+      d3.select('g')
+
+      var legend = svg
+        .selectAll('g')
+        .data(data)
+        .enter()
+        .append('g')
+        .attr('class', 'legend');
+
+      svg.append('g')
+        .attr('class', 'x axis')
+        .attr('transform', 'translate(0,' + h + ')')
+        .call(xAxis)
+        .attr('color', '#BCC2D4')
+
+      svg.append('g')
+        .attr('class', 'y axis')
+        .attr('color', '#BCC2D4')
+        .call(yAxis)
+        .append('text')
+        .attr('y', -10)
+        .attr('x', -20)
+        .attr('dy', '.7em')
+        .style('text-anchor', 'end')
+        .attr('fill', '#fff')
+        .text('Kwh')
+
+      d3.selectAll('g.y g.tick')
+        .append('line')
+        .classed('grid-line', true)
+        .attr('x1', 0)
+        .attr('y1', 0)
+        .attr('x2', w)
+        .attr('y2', 0)
+        .style('stroke', '#123157')
+
+      var city = svg
+        .selectAll('.city')
+        .data([data, data1])
+        .enter().append('g')
+        .attr('class', 'city')
+
+      city.append('path')
+        .attr('class', 'line')
+        .attr('d', d => line(d))
+        .style('stroke', (d, index) => index === 0 ? `url('#liner')` : 'yellow')
+
+      let tips = d3
+        .tip()
+        .attr('class', 'd3-tip')
+        .attr('id','d3Tip')
+        .offset((d, positon) => [positon[1] < 100 ? 100 : positon[1], 100])
+        .html((d, positon) => {
+          return `<div calss='tipsClass'>
+            <div style='font-size: 14px;
+              font-family: Source Han Sans CN-Bold, Source Han Sans CN;
+              font-weight: bold;
+              color: #3DCCD5;
+              padding:10px;
+              height: 20px;
+              border-bottom: 1px solid #3DCCD5;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              line-height: 20px;'
+            >
+              <span style='display:inline-block;width: 2px;height: 14px;background: #3DCCD5;margin-right:10px'></span>
+              2022/10/23 13:00
+            </div>
+            <div calss='value' style='font-family: Source Han Sans CN-Regular, Source Han Sans CN;font-weight: 400;
+              color: #FFFFFF;line-height: 17px; padding:5px;'
+            >
+              <span style='display:inline-block;width:85px;'>实际运行功率：</span>
+              <span>
+                <span style='color:#3DCCD5;'>${d.y1}</span>
+                kw
+              </span>
+            </div>
+            <div calss='value' style='font-family: Source Han Sans CN-Regular, Source Han Sans CN;
+              font-weight: 400;
+              color: #FFFFFF;
+              padding-bottom:5px;
+              line-height: 17px;'
+            >
+              <span style='display:inline-block;width:85px;'>典型曲线功率：</span>
+              <span style='color:#3DCCD5;'>${d.y}</span> kw
+            </div>
+            <div calss='value' style='font-family: Source Han Sans CN-Regular, Source Han Sans CN;
+              font-weight: 400;
+              color: #FFFFFF;
+              line-height: 17px;'
+            >
+              <span class='name' style='display:inline-block;width:78px;text-align: right;'>运行状态：</span>
+              <span class='type' style='color:#FFDB7A;'>低效</span>
+            </div>
+          </div>`
+        })
+
+      _svg.call(tips)
+
+      // tips 线条(提示条)
+      svg.append('g')
+        .selectAll('.rect')
+        .data([1])
+        .join('rect')
+        .attr('width', 1)
+        .attr('height', h)
+        .attr('id', 'tipsRect')
+        .attr('opacity', 0)
+        .attr('cursor', 'pointer')
+        .attr('fill','#fff')
+
+      // 提示牌
+      svg.append('g')
+        .selectAll('.rect')
+        .data(dataValue)
+        .join('rect')
+        .attr('width', w / 25)
+        .attr('height', h)
+        .attr('transform', (d, index) => `translate(${scaleX(d.x) - w / 11}, 0)`)
+        .attr('fill', 'transparent')
+        .attr('cursor', 'pointer')
+        .on('mouseover', function(d, index, value) {
+          let coordinates = d3.mouse(this); // 获取鼠标位置
+          tips.show(d, coordinates)
+          let transform_x_y = d3.select(this).attr('transform')
+          d3.select(`#tipsRect`)
+            .attr('opacity', 1)
+            .attr('transform', `translate(${scaleX(d.x) - w / 13}, 0)`)
+        })
+        .on('mouseout', function(d, index) {
+          tips.hide()
+          d3.select(`#tipsRect`)
+            .attr('opacity', 0)
+            .attr('stroke', 'transparent')
+            .attr('stroke-width', 1);
+        })
+
+  </script>
+</body>
+
+</html>
