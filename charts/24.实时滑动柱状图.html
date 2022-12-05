@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>24.实时滑动柱状图</title>
+	<script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+	<div class="chart"></div>
+
+	<script type="text/javascript">
+
+		const data = [
+			{ group: 0, people: 4589196 },
+			{ group: 5, people: 4390483 },
+			{ group: 10, people: 4001749 },
+			{ group: 15, people: 3801743 },
+			{ group: 20, people: 3751061 },
+			{ group: 25, people: 3236056 },
+			{ group: 30, people: 2665174 },
+			{ group: 35, people: 2347737 },
+			{ group: 40, people: 2004987 },
+			{ group: 45, people: 1648025 },
+			{ group: 50, people: 1411981 },
+			{ group: 55, people: 1064632 },
+			{ group: 60, people: 887508 },
+			{ group: 65, people: 640212 },
+			{ group: 70, people: 440007 },
+			{ group: 75, people: 265879 },
+			{ group: 80, people: 132449 },
+			{ group: 85, people: 48614 },
+			{ group: 90, people: 20093 },
+		]
+
+		/**
+		 * 添加画布
+		 */
+
+		// 全局画布变量
+		const width = 600
+		const height = 400
+		const margin = { top: 50, right: 50, bottom: 50, left: 100 }
+
+		const svg = d3
+			.select('.chart')
+			.append('svg')
+			.attr('width', width + margin.left + margin.right)
+			.attr('height', height + margin.top + margin.bottom)
+
+		const chart = svg
+			.append('g')
+			.attr('id', 'chart')
+			.attr('transform', `translate(${margin.left}, ${margin.top})`)
+
+
+		/**
+		 * 比例尺和配置信息
+		 */
+
+		// 比例尺
+		const x = d3
+			.scaleBand()
+			.rangeRound([0, width])
+			.domain(data.map(d => d.group))
+			.padding(0.1)
+		const y = d3
+			.scaleLinear()
+			.range([height, 0])
+			.domain([0, 10000000])
+
+		const color = d3.scaleOrdinal().range(['#42adf4', '#ff96ca']).domain([1, 2])
+
+
+		/**
+		 * 绘制图表
+		 */ 
+		const xAxis = d3.axisBottom(x)
+		chart.append('g')
+			.attr('class', 'x axis')
+			.attr('transform', `translate(0, ${height})`)
+			.call(xAxis)
+
+		chart.append('g')
+			.attr('class', 'y axis')
+			.call(d3.axisLeft(y))
+		
+		function updateBetter() {
+			// 第一步：重绘x坐标轴
+			x.domain(data.map(d => d.group))
+			chart.select('.x.axis').call(xAxis)
+
+			// 第二步：绑定数据，绘制柱状图
+			// 以“group”字段为唯一标识（作用：第二次执行数据绑定，判断DOM是否存在，存在则修改，不存在则删除，多出数据进行新增）
+			const bars = chart.selectAll('.bar').data(data, (d) => d.group)
+			bars
+				.enter()
+				.append('rect')
+				.attr('class', 'bar')
+				.attr('x', (d) => x(d.group))
+				.attr('y', (d) => y(0))
+				.attr('width', x.bandwidth())
+				.attr('height', 0)
+				.attr('fill', (d) => color(1))
+				.transition('enter-transition')
+				.duration(500)
+				.attr('y', (d) => y(d.people))
+				.attr('height', (d) => height - y(d.people))
+
+			// 第三步：修改操作
+			bars
+				.transition('update-transition')
+				.duration(500)
+				.attr('x', (d) => x(d.group))
+				.attr('y', (d) => y(d.people))
+				.attr('height', (d) => height - y(d.people))
+				.attr('fill', (d) => color(1))
+
+			// 第四步：移出操作
+			bars
+				.exit()
+				.transition('exit-transition')
+				.duration(500)
+				.attr('height', 0)
+				.attr('y', y(0))
+				.attr('x', 0)
+				.remove()
+
+			// 第五步
+			data.shift()
+			data.push({
+				group: `${~~(Math.random() * 10000)}`,
+				people: ~~(Math.random() * 5000000)
+			})
+		}
+
+		updateBetter()
+
+		setInterval(() => {
+			updateBetter()
+		}, 1000)
+
+	</script>
+</body>
+</html>
