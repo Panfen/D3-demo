@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>25.排名柱状图</title>
+	<script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+	<div class="chart"></div>
+
+	<script type="text/javascript">
+
+		/**
+		 * 添加画布
+		 */
+
+		// 全局画布变量
+		const width = 1200
+		const height = 700
+		const margin = { top: 80, right: 65, bottom: 5, left: 20 }
+
+		const svg = d3
+			.select('.chart')
+			.append('svg')
+			.attr('width', width)
+			.attr('height', height)
+
+		const chart = svg
+			.append('g')
+			.attr('id', 'chart')
+			.attr('transform', `translate(${margin.top}, ${margin.left})`)
+
+
+		/**
+		 * 比例尺和配置信息
+		 */
+
+		// 展示条数
+		const top_n = 20
+		// 间距
+		const barPadding = (height - margin.top - margin.bottom) / (top_n * 5)
+		// 排名开始月
+		let month = 1
+		// 执行间隔
+		const tickDuration = 100
+
+		// 比例尺
+		const xScale = d3
+			.scaleLinear()
+			.range([margin.left, width - margin.right])
+			.nice()
+		const yScale = d3
+			.scaleLinear()
+			.range([height - margin.bottom, margin.top])
+			.domain([top_n, 0])
+
+		const xAxis = d3
+			.axisTop(xScale)
+			.ticks(width > 500 ? 5 : 2)
+			.tickSize(-(height - margin.top - margin.bottom))
+
+		/**
+		 * 绘制排名柱状图
+		 */ 
+		d3.csv('../data/car.csv').then((data) => {
+			// 数据格式转换
+			data.forEach((d) => {
+				d.rank = Number(d.rank)
+				d.value = Number(d.value)
+				d.month = Number(d.month)
+				d.color = d3.hsl(Math.random() * 360, 1, 0.75, 0.8)
+				d.lastValue = Number(d.lastValue)
+			})
+
+			let monthSlice = sliceData(data, month)
+
+			render_init(monthSlice)
+
+			/**
+			 * 让柱状图动起来
+			 */ 
+			let ticker = d3.interval((e) => {
+				month = month + 1
+
+				svg.select('.monthText').html(month)
+
+				// 循环结束
+				if (month === 10) {
+					ticker.stop()
+				}
+
+				// 重新切分数据
+				monthSlice = sliceData(data, month)
+
+				// 修改比例尺
+				xScale.domain([0, monthSlice[0].value + 10000])
+				// x轴重新绘制，添加动画
+				svg
+					.select('.xAxis')
+					.transition()
+					.duration(tickDuration)
+					.ease(d3.easeLinear)
+					.call(xAxis)
+
+				// 绑定数据，通过标示符判断是否存在
+				const bars = svg.selectAll('.bar').data(monthSlice, (d) => d.name)
+
+				// 不存在的，在柱状进行创建
+				bars
+					.enter()
+					.append('rect')
+					.attr('class', 'bar')
+					.attr('x', xScale(0) + margin.left + 1)
+					.attr('width', (d) => xScale(d.value) - xScale(0))
+					.attr('y', (d) => yScale(top_n + 1) + 5)
+					.attr('height', yScale(1) - yScale(0) - barPadding)
+					.attr('fill', (d) => d.color)
+
+				// 对现存的所有节点添加动画
+				bars
+					.transition()
+					.duration(tickDuration)
+					.ease(d3.easeLinear)
+					.attr('width', (d) => xScale(d.value) - xScale(0))
+					.attr('y', (d) => yScale(d.rank) + 5)
+
+				// 删除不存在的节点，添加离开动画
+				bars
+					.exit()
+					.transition()
+					.duration(tickDuration)
+					.ease(d3.easeLinear)
+					.attr('y', (d) => yScale(top_n + 1) + 5)
+					.attr('width', 0)
+					.remove()
+
+				/**
+				 * 让文本和数字动起来
+				 */
+				const labels = svg.selectAll('.label').data(monthSlice, (d) => d.name)
+
+				labels
+					.enter()
+					.append('text')
+					.attr('class', 'label')
+					.attr('x', (d) => xScale(d.value))
+					.attr('y', (d) => yScale(top_n + 1) + 8)
+					.attr('text-anchor', 'end')
+					.text((d) => d.name)
+
+				labels
+					.transition()
+					.duration(tickDuration)
+					.ease(d3.easeLinear)
+					.attr('x', (d) => xScale(d.value))
+					.attr('y', (d) => yScale(d.rank) + (yScale(1) - yScale(0)) / 2 + 8)
+
+				labels
+					.exit()
+					.transition()
+					.duration(tickDuration)
+					.ease(d3.easeLinear)
+					.attr('y', (d) => yScale(top_n + 1) + 20)
+					.remove()
+
+				const valueLabels = svg.selectAll('.valueLabel').data(monthSlice, (d) => d.name)
+
+				valueLabels
+					.enter()
+					.append('text')
+					.attr('class', 'valueLabel')
+					.attr('x', (d) => xScale(d.value) + 30)
+					.attr('y', (d) => yScale(top_n) + 20)
+					.text((d) => d.lastValue)
+
+				valueLabels
+					.transition()
+					.duration(tickDuration)
+					.ease(d3.easeLinear)
+					.attr('x', (d) => xScale(d.value) + 30)
+					.attr('y', (d) => yScale(d.rank) + (yScale(1) - yScale(0)) / 2 + 8)
+					.tween('textTween', function(d) {
+						// 两个数值变化过渡效果
+						let i = d3.interpolateRound(d.lastValue, d.value)
+						return function(t) {
+							this.textContent = i(t)
+						}
+					})
+
+				valueLabels
+					.exit()
+					.transition()
+					.duration(tickDuration)
+					.ease(d3.easeLinear)
+					.attr('x', (d) => xScale(d.value) + 30)
+					.attr('y', (d) => yScale(top_n + 1) + 20)
+					.remove()
+				
+			}, 500)
+		})
+
+		/**
+		 * 根据开始月份，获取当月数据，并经行排序，截取为设置的条数，并对数据设置排名
+		 */ 
+		function sliceData(data, curMon) {
+			const sliceData = data
+				.filter((d) => d.month === curMon)
+				.slice(0, top_n)
+
+			sliceData.forEach((d, i) => (d.rank = i))
+			return sliceData
+		}
+
+		/**
+		 * 初始化柱状图
+		 */ 
+		function render_init(monthSlice) {
+			// 绘制标题
+			chart
+				.append('text')
+				.attr('class', 'title')
+				.attr('x', (width - margin.top) / 2)
+				.attr('y', 30)
+				.attr('style', 'font-size: 2em; font-weight: 500;')
+				.text('排名柱状图')
+				.attr('text-anchor', 'middle')
+
+			xScale.domain([0, monthSlice[0].value + 10000])
+			svg
+				.append('g')
+				.attr('class', 'xAxis')
+				.call(xAxis)
+				.attr('transform', `translate(${margin.left}, ${margin.top})`)
+
+
+			// 绘制柱状
+			svg
+				.selectAll('rect.bar')
+				.data(monthSlice, (d) => d.name)
+				.enter()
+				.append('rect')
+				.attr('class', 'bar')
+				.attr('x', xScale(0) + margin.left + 1)
+				.attr('width', (d) => xScale(d.value) - xScale(0))
+				.attr('y', (d) => yScale(d.rank) + 5)
+				.attr('height', yScale(1) - yScale(0) - barPadding)
+				.attr('fill', (d) => d.color)
+
+			// 绘制品牌名
+			svg
+				.selectAll('text.label')
+				.data(monthSlice, (d) => d.name)
+				.enter()
+				.append('text')
+				.attr('class', 'label')
+				.attr('x', (d) => xScale(d.value))
+				.attr('y', (d) => yScale(d.rank) + (yScale(1) - yScale(0)) / 2 + 8)
+				.attr('text-anchor', 'end')
+				.text((d) => d.name)
+
+			// 绘制数值
+			svg
+				.selectAll('text.valueLabel')
+				.data(monthSlice, (d) => d.name)
+				.enter()
+				.append('text')
+				.attr('class', 'valueLabel')
+				.attr('x', (d) => xScale(d.value) + 30)
+				.attr('y', (d) => yScale(d.rank) + (yScale(1) - yScale(0)) / 2 + 8)
+				.text((d) => d.value)
+
+			// 绘制月份
+			svg
+				.append('text')
+				.attr('class', 'monthText')
+				.attr('x', width - margin.right)
+				.attr('y', height - 25)
+				.attr('fill', '#2eb0c5d9')
+				.attr('text-anchor', 'end')
+				.attr('style', 'font-size:2em; font-weight: 500;font-weight: bold;')
+				.text(month)
+		}
+
+	</script>
+</body>
+</html>
