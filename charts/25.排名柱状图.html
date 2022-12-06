@@ -216,6 +216,7 @@
 		 * 初始化柱状图
 		 */ 
 		function render_init(monthSlice) {
+			
 			// 绘制标题
 			chart
 				.append('text')
@@ -227,12 +228,12 @@
 				.attr('text-anchor', 'middle')
 
 			xScale.domain([0, monthSlice[0].value + 10000])
+
 			svg
 				.append('g')
 				.attr('class', 'xAxis')
 				.call(xAxis)
 				.attr('transform', `translate(${margin.left}, ${margin.top})`)
-
 
 			// 绘制柱状
 			svg
