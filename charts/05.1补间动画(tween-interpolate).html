@@ -7,15 +7,14 @@
 	<script src="https://d3js.org/d3.v7.min.js"></script>
 	<style>
     body {
-      margin: 100px;
-      background: #000;
+      margin: 100px ;
     }
-    #show{
+    #show {
       margin: 0 auto;
       text-align: center;
       font-size: 100px;
     }
-    #color{
+    #color {
       color: #999;
       margin: 0 auto;
       text-align: center;
@@ -23,28 +22,27 @@
   </style>
 </head>
 <body>
-	<div id="show"></div>
-	<div id="color"></div>
+	<div id="show" />
+	<div id="color" />
 
 	<script type="text/javascript">
 	
-		window.addEventListener('load',function() {
-      var show = d3.select('#show');
-      var cc = document.getElementById('color');
+		window.addEventListener('load', function() {
+      var show = d3.select('#show')
+      var cc = document.getElementById('color')
 
       show.transition()
       .duration(3000)
       .tween('number', function() {
-        var i = d3.interpolateRound('0', '1000');
-        var c = d3.interpolateRgb('#555', '#fa0');
+        var i = d3.interpolateRound('0', '1000')
+        var c = d3.interpolateRgb('#555', '#fa0')
         return function(t) {
-          this.textContent = i(t);
-          d3.select(this).style('color', c(t));
-          console.log(cc.textContent);
-          cc.innerHTML = c(t);
-        };
-      });
-    }, false);
+          this.textContent = i(t)
+          d3.select(this).style('color', c(t))
+          cc.innerHTML = c(t)
+        }
+      })
+    }, false)
 
 	</script>
 </body>

@@ -208,7 +208,7 @@
 		 * 添加了遮罩层，就不能使用虚线的方式来实现动画，这里使用.attrTeeen()来实现过度动画
 		 */ 
 
-		// 因为过度动画的值是0 ~ 1的范围，需要把一条折线上的每个坐标与之对应，这时候就需要插值函数。输入0 ~ 1范围的值，获取该值对应的坐标。
+		// 因为过度动画的值是0 ~ 1的范围，需要把一条折线上的每个坐标与之对应，这时候就需要插值函数，输入0 ~ 1范围的值，获取该值对应的坐标
 		function getAreaInterpolate(pointX, pointY) {
 			const domain = d3.range(0, 1, 1 / (pointX.length - 1))
 			// 补上结尾1
@@ -228,7 +228,7 @@
 			.selectAll('path.lines')
 			.transition()
 			.duration(2000)
-			.attrTween('d' , (_d) => { // transition.attrTeeen(name,tween) 动画函数。将属性name使用插值函数tween()进行过渡
+			.attrTween('d' , (_d) => { // transition.attrTeeen(name, tween) 动画函数，将属性name使用插值函数tween()进行过渡
 				const pointX = _d.map(d => xScale(d[0]))
 				const pointY = _d.map(d => yScale(d[1]))
 
