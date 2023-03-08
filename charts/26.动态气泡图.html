@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>26.动态气泡图</title>
+	<script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+	<div class="chart"></div>
+
+	<script type="text/javascript">
+		// 参考：https://juejin.cn/post/7195746542069186620
+
+		const width = 1200
+		const height = 700
+		const margin = { top: 20, right: 20, bottom: 35, left: 40 }
+
+		const svg = d3.select('.chart').append('svg')
+			.attr('width', width)
+			.attr('height', height)
+
+		/**
+		 * 数据转换
+		 */ 
+		const parseSeries = (series) => {
+			return series.map(([year, value]) => [new Date(Date.UTC(year, 0, 1)), value])
+		}
+
+		/**
+		 * 基于原始数据集（推测）计算出相应日期的值
+		 * 使用 bisection 二分查找算法和 linear interpolation 线性插值法
+		 * 基于原始的（以年为间距单位）数据集 values 来（推测）计算出给定月份 date 的数据
+		 */ 
+		const valueAt = (values, date) => {
+			// 二元分割
+			const bisectDate = d3.bisector(([date]) => date).left // 左分割
+			const i = bisectDate(values, date, 0, values.length - 1)
+			const a = values[i]
+			if (i > 0) {
+				const b = values[i - 1]
+				const t = (date - a[0]) / (b[0] - a[0])
+				return a[1] * (1 - t) + b[1] * t
+			}
+			return a[1]
+		}
+
+		/**
+		 * 从data中取出日期为date的数据
+		 */ 
+		const dataAt = (data, date) => {
+			return data.map(d => ({
+				name: d.name,
+				region: d.region,
+				// 对一下三个属性的值进行转换，只获取相应日期的数据
+				income: valueAt(d.income, date),
+				population: valueAt(d.population, date),
+				lifeExpectancy: valueAt(d.lifeExpectancy, date)
+			}))
+		}
+
+		// 异步获取数据
+		const dataURL = "https://gist.githubusercontent.com/Benbinbin/26ca6aed886aef9e5f662f6f98535290/raw/834fb5232b06c2055ba64fdc16195b0400c103ee/wealth-health-of-nations.json";
+
+		d3.json(dataURL).then((result) => {
+
+			// 解析数据
+			const data = result.map(({ name, region, income, population, lifeExpectancy }) => ({
+				name,
+				region,
+				income: parseSeries(income),
+				population: parseSeries(population),
+				lifeExpectancy: parseSeries(lifeExpectancy)
+			}))
+
+			// 构建日期列表
+			const interval = d3.utcMonth
+			const dates = interval.range(
+				// 获取时间范围的下线（最早的年份）
+				d3.min(data, d => {
+					return d3.min(
+						[d.income[0], d.population[0], d.lifeExpectancy[0]],
+						([date]) => date
+					)
+				}),
+
+				// 获取时间范围的上限（最近的年份）
+				d3.min(data, d => {
+					return d3.max(
+						[
+							d.income[d.income.length - 1],
+							d.population[d.population.length - 1],
+							d.lifeExpectancy[d.lifeExpectancy.length - 1]
+						],
+						([date]) => date
+					)
+				})
+			)
+
+			// X轴比例尺(收入)，因为人均收入差距巨大（200美元 - 100000美元），所以采用对数比例尺
+			const x = d3.scaleLog([200, 1e5], [margin.left, width - margin.right])
+
+			// Y轴比例尺(寿命)，采用线性比例尺
+			const y = d3.scaleLinear([14, 86], [height - margin.bottom, margin.top])
+
+			// 半径比例尺
+			const radius = d3.scaleSqrt([0, 5e8], [0, width / 24])
+
+			// 颜色比例尺
+			const color = d3.scaleOrdinal(data.map(d => d.region), d3.schemeCategory10).unknown('black')
+
+			// X坐标轴
+			const xAxis = g => g
+				.attr('transform', `translate(0, ${height - margin.bottom})`)
+				.call(d3.axisBottom(x).ticks(width / 80, ','))
+
+			// Y坐标轴
+			const yAxis = g => g
+				.attr('transform', `translate(${margin.left}, 0)`)
+				.call(d3.axisLeft(y))
+
+			svg.append('g').call(xAxis)
+			svg.append('g').call(yAxis)
+
+			// 绘制数据点
+			const circle = svg.append('g')
+				.attr('stroke', 'black')
+				.selectAll('circle')
+				.data(dataAt(data, 1800), d => d.name)
+				.join('circle')
+				.sort((a, b) => d3.descending(a.population, b.population))
+				.attr('cx', d => x(d.income))
+				.attr('cy', d => y(d.lifeExpectancy))
+				.attr('r', d => radius(d.population))
+				.attr('fill', d => color(d.region))
+				.call(circle => circle.append('title')
+					.text(d => [d.name, d.region].join('\n'))
+				)
+
+			// 制作动画 更新页面上的数据点的属性（大小和位置）
+			const update = (data) => {
+				circle.data(data, data.name)
+				.sort((a, b) => d3.descending(a.population, b.population))
+				.attr('cx', d => x(d.income))
+				.attr('cy', d => y(d.lifeExpectancy))
+				.attr('r', d => radius(d.population))
+			}
+
+			let index = 1
+			let year = 1800
+			const timer = setInterval(() => {
+				if (index < dates.length) {
+					const currentDate = dates[index]
+					const currentData = dataAt(data, currentDate)
+					update(currentData)
+					index++
+				} else {
+					clearInterval(timer)
+				}
+			}, 5)
+		})
+
+	</script>
+</body>
+</html>
